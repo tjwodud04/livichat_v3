@@ -68,7 +68,7 @@ class Live2DManager {
                 uint8Array[i] = audioData.charCodeAt(i);
             }
 
-            const audioBlob = new Blob([arrayBuffer], { type: 'audio/wav' });  // 오디오 데이터로 Blob 객체 생성
+            const audioBlob = new Blob([arrayBuffer], { type: 'audio/webm;codecs=opus' });  // 오디오 데이터로 Blob 객체 생성
             const audioUrl = URL.createObjectURL(audioBlob);  // Blob을 URL로 변환
             console.log('Audio blob created and URL generated');  // Blob 생성 및 URL 생성 완료 메시지
 

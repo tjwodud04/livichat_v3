@@ -160,7 +160,7 @@ class Live2DManager {
             console.log('Starting audio playback with lip sync');
 
             const audioData = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0));
-            const wavBlob = new Blob([this.createWAVFromPCM(audioData)], { type: 'audio/wav' });
+            const wavBlob = new Blob([this.createWAVFromPCM(audioData)], { type: 'audio/webm;codecs=opus' });
             const audioUrl = URL.createObjectURL(wavBlob);
 
             const audioElement = new Audio();

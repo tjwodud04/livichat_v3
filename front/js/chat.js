@@ -68,7 +68,13 @@ class Live2DManager {
                 uint8Array[i] = audioData.charCodeAt(i);
             }
 
-            const audioBlob = new Blob([arrayBuffer], { type: 'audio/wav' });  // 오디오 데이터로 Blob 객체 생성
+            // MediaRecorder가 audio/webm;codecs=opus를 지원하는지 확인
+            let mimeType = 'audio/webm;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                alert('이 브라우저는 webm/opus 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
+                return;
+            }
+            const audioBlob = new Blob([arrayBuffer], { type: 'audio/webm;codecs=opus' });  // 오디오 데이터로 Blob 객체 생성
             const audioUrl = URL.createObjectURL(audioBlob);  // Blob을 URL로 변환
             console.log('Audio blob created and URL generated');  // Blob 생성 및 URL 생성 완료 메시지
 
@@ -152,16 +158,11 @@ class AudioManager {
             console.log('Audio stream obtained successfully');
 
             this.audioStream = stream;
-            // MediaRecorder가 audio/wav를 지원하는지 확인
-            let mimeType = '';
-            if (MediaRecorder.isTypeSupported('audio/wav')) {
-                mimeType = 'audio/wav';
-            } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                // webm만 지원하는 브라우저의 경우, webm으로 녹음 후 변환 필요
-                mimeType = 'audio/webm;codecs=opus';
-                // TODO: webm→wav 변환 라이브러리(ffmpeg.wasm 등) 적용 필요
-            } else {
-                throw new Error('지원하지 않는 오디오 포맷');
+            // MediaRecorder가 audio/webm;codecs=opus를 지원하는지 확인
+            let mimeType = 'audio/webm;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                alert('이 브라우저는 webm/opus 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
+                return false;
             }
             this.mediaRecorder = new MediaRecorder(stream, { mimeType });
 
@@ -219,15 +220,15 @@ class AudioManager {
 
     getAudioBlob() {
         // 오디오 청크로 Blob 생성
-        // 항상 wav로 반환 (webm 녹음 시 변환 필요)
-        if (this.mediaRecorder && this.mediaRecorder.mimeType === 'audio/wav') {
-            const blob = new Blob(this.audioChunks, { type: 'audio/wav' });
+        // 항상 webm으로 반환 (webm 녹음 시 변환 필요)
+        if (this.mediaRecorder && this.mediaRecorder.mimeType === 'audio/webm;codecs=opus') {
+            const blob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
             console.log('Audio blob created:', blob.size, 'bytes');
             return blob;
         } else {
             // webm으로 녹음된 경우 변환 필요 (ffmpeg.wasm 등 활용)
             // TODO: webm→wav 변환 코드 추가 필요
-            alert('이 브라우저에서는 wav 녹음이 지원되지 않습니다. Chrome 최신 버전을 권장합니다.');
+            alert('이 브라우저에서는 webm/opus 녹음이 지원되지 않습니다. 최신 Chrome을 사용해 주세요.');
             return null;
         }
     }

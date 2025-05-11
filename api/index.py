@@ -13,6 +13,8 @@ import json  # JSON 데이터 처리를 위한 모듈 임포트
 import threading  # 멀티턴 대화 이력 관리를 위한 Lock
 import websockets  # WebSocket 연결용
 import asyncio
+import mimetypes
+from pydub import AudioSegment
 
 # Flask 애플리케이션 초기화
 app = Flask(__name__, 
@@ -150,9 +152,20 @@ def chat():
         character = request.form.get('character', 'kei')
 
         # 임시 파일 저장
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_file:
             audio_file.save(temp_file)
             temp_file_path = temp_file.name
+
+        # webm/opus 등 비-wav 파일을 Whisper에 넘기기 전에 wav(PCM, 24kHz, mono, 16bit)로 변환
+        mime_type, _ = mimetypes.guess_type(temp_file_path)
+        is_wav = mime_type == 'audio/wav' or temp_file_path.endswith('.wav')
+        if not is_wav:
+            wav_temp_path = temp_file_path + '.wav'
+            audio = AudioSegment.from_file(temp_file_path)
+            audio = audio.set_frame_rate(24000).set_channels(1).set_sample_width(2)
+            audio.export(wav_temp_path, format='wav')
+            os.unlink(temp_file_path)
+            temp_file_path = wav_temp_path
 
         try:
             # 1. Whisper 전사
@@ -188,7 +201,6 @@ def chat():
             async def call_realtime_api(audio_path, system_message, history, api_key):
                 import base64
                 import json
-                from pydub import AudioSegment
                 import io
                 # 오디오 변환 (pcm16, 24kHz, mono)
                 audio = AudioSegment.from_file(audio_path)
