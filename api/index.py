@@ -156,17 +156,6 @@ def chat():
             audio_file.save(temp_file)
             temp_file_path = temp_file.name
 
-        # webm/opus 등 비-wav 파일을 Whisper에 넘기기 전에 wav(PCM, 24kHz, mono, 16bit)로 변환
-        mime_type, _ = mimetypes.guess_type(temp_file_path)
-        is_wav = mime_type == 'audio/wav' or temp_file_path.endswith('.wav')
-        if not is_wav:
-            wav_temp_path = temp_file_path + '.wav'
-            audio = AudioSegment.from_file(temp_file_path)
-            audio = audio.set_frame_rate(24000).set_channels(1).set_sample_width(2)
-            audio.export(wav_temp_path, format='wav')
-            os.unlink(temp_file_path)
-            temp_file_path = wav_temp_path
-
         try:
             # 1. Whisper 전사
             client = get_openai_client()

@@ -1,3 +1,4 @@
+// Live2D 모델 관리 클래스
 class Live2DManager {
     constructor() {
         this.model = null;        // Live2D 모델 객체를 저장할 변수
@@ -116,6 +117,7 @@ class Live2DManager {
     }
 }
 
+// 오디오 녹음 및 업로드 관리 클래스
 class AudioManager {
     constructor() {
         this.mediaRecorder = null;  // 미디어 레코더 객체를 저장할 변수
@@ -220,14 +222,11 @@ class AudioManager {
 
     getAudioBlob() {
         // 오디오 청크로 Blob 생성
-        // 항상 webm으로 반환 (webm 녹음 시 변환 필요)
         if (this.mediaRecorder && this.mediaRecorder.mimeType === 'audio/webm;codecs=opus') {
             const blob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
             console.log('Audio blob created:', blob.size, 'bytes');
             return blob;
         } else {
-            // webm으로 녹음된 경우 변환 필요 (ffmpeg.wasm 등 활용)
-            // TODO: webm→wav 변환 코드 추가 필요
             alert('이 브라우저에서는 webm/opus 녹음이 지원되지 않습니다. 최신 Chrome을 사용해 주세요.');
             return null;
         }
@@ -244,6 +243,7 @@ class AudioManager {
     }
 }
 
+// 채팅 및 대화 이력 관리 클래스
 class ChatManager {
     constructor(characterType = 'kei') {  // 기본값으로 'kei' 설정
         this.chatHistory = document.getElementById('chatHistory');  // 채팅 기록 DOM 요소 가져오기
@@ -352,6 +352,7 @@ let live2dManager;  // Live2D 관리자 전역 변수
 let audioManager;   // 오디오 관리자 전역 변수
 let chatManager;    // 채팅 관리자 전역 변수
 
+// 립싱크 업데이트 함수
 function updateLipSync() {
     if (audioManager && audioManager.isRecording) {  // 오디오 관리자가 있고 녹음 중인 경우
         const audioData = audioManager.getAudioData();  // 오디오 데이터 가져오기
@@ -366,7 +367,7 @@ function updateLipSync() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {  // DOM 로드 완료 이벤트 처리
+document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing application...');  // 애플리케이션 초기화 시작 메시지
     live2dManager = new Live2DManager();  // Live2D 관리자 생성
     audioManager = new AudioManager();    // 오디오 관리자 생성
@@ -381,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {  // DOM 로드 완료 이�
     console.log('Application initialization completed');  // 애플리케이션 초기화 완료 메시지
 });
 
+// 녹음 버튼 클릭 시 동작
 async function handleRecording() {
     const recordButton = document.getElementById('recordButton');  // 녹음 버튼 DOM 요소 가져오기
 

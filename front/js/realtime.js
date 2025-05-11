@@ -100,6 +100,7 @@ class AudioManager {
     }
 }
 
+// Live2D 모델 및 표정/립싱크 관리 클래스
 class Live2DManager {
     constructor() {
         this.model = null;
@@ -263,6 +264,7 @@ class Live2DManager {
     }
 }
 
+// 채팅 및 대화 이력 관리 클래스
 class ChatManager {
     constructor(characterType = 'momose') {
         this.chatHistory = document.getElementById('chatHistory');
@@ -367,6 +369,7 @@ let live2dManager;
 let audioManager;
 let chatManager;
 
+// 앱 초기화 및 이벤트 바인딩
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Application initializing...');
     live2dManager = new Live2DManager();
@@ -379,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recordButton.addEventListener('click', handleRecording);
 });
 
+// 녹음 버튼 클릭 시 동작
 async function handleRecording() {
     const recordButton = document.getElementById('recordButton');
 
