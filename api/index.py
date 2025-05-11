@@ -23,8 +23,14 @@ CORS(app)  # CORS 지원 활성화 - 다른 도메인에서의 요청 허용
 BASE_DIR = Path(__file__).resolve().parent  # 현재 파일의 디렉토리 경로 설정
 CONVERSATIONS_FILE = BASE_DIR / "conversations.json"  # 대화 내용을 저장할 파일 경로 설정
 
-# OpenAI 클라이언트 초기화 - 환경 변수에서 API 키를 가져옴
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# --- OpenAI 클라이언트 생성 함수 (헤더 우선, 없으면 환경변수) ---
+def get_openai_client():
+    api_key = request.headers.get("X-API-KEY")
+    if not api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise Exception("OpenAI API 키가 없습니다.")
+    return OpenAI(api_key=api_key)
 
 # --- 멀티턴 대화 이력(최근 3턴) 관리용 (메모리, 유저별 구분 없음) ---
 conversation_history = []  # 최근 대화 이력 (user/assistant role)
@@ -35,7 +41,7 @@ def analyze_emotion(text):
     """
     입력 텍스트에 대해 유교 7정(기쁨, 분노, 슬픔, 즐거움, 사랑, 미움, 욕심) 감정 비율(%)과 최고 감정을 반환
     """
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = get_openai_client()
     prompt = (
         "다음 문장에서 유교의 7정(기쁨, 분노, 슬픔, 즐거움, 사랑, 미움, 욕심)에 대해 각각 0~100%로 감정 비율을 추정해 주세요. "
         "가장 높은 감정도 함께 알려주세요.\n"
@@ -167,10 +173,11 @@ def chat():
             # Whisper API로 음성을 텍스트로 변환
             with open(temp_file_path, 'rb') as audio:  # 임시 파일을 바이너리 읽기 모드로 열기
                 print("Sending file to Whisper API")  # Whisper API로 파일 전송 중임을 로그로 출력
-                transcription = client.audio.transcriptions.create(  # Whisper API를 통한 음성 텍스트 변환 요청
-                    model="whisper-1",  # 사용할 모델 지정
-                    file=audio,  # 변환할 오디오 파일
-                    response_format="text"  # 응답 형식을 텍스트로 지정
+                client = get_openai_client()
+                transcription = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio,
+                    response_format="text"
                 )
                 print(f"Transcription received: {transcription}")  # 받은 텍스트 변환 결과 출력
 
@@ -199,6 +206,7 @@ def chat():
                 messages = [{"role": "system", "content": system_message}] + conversation_history.copy()
 
             # gpt-4o 응답 생성
+            client = get_openai_client()
             chat_response = client.chat.completions.create(
                 model="gpt-4o-realtime-preview",
                 modalities=["text", "audio"],
