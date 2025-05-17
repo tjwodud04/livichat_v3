@@ -61,6 +61,14 @@
         </div>
     </div>
 
+    <!-- polyfill을 먼저 불러옵니다 -->
+    <script src="audio-recorder-polyfill.min.js"></script>
+    <script>
+      // MediaRecorder가 없으면 polyfill을 사용하도록 설정
+      window.MediaRecorder = window.MediaRecorder || window.AudioRecorderPolyfill;
+    </script>
+    <!-- 그 다음에 chat.js 등에서 MediaRecorder를 사용 -->
+    <script src="chat.js"></script>
     <script src="/js/main.js"></script>
 </body>
 </html>
