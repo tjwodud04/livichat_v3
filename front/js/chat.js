@@ -69,13 +69,13 @@ class Live2DManager {
                 uint8Array[i] = audioData.charCodeAt(i);
             }
 
-            // MediaRecorder가 audio/webm;codecs=opus를 지원하는지 확인
-            let mimeType = 'audio/webm;codecs=opus';
+            // MediaRecorder가 audio/wav를 지원하는지 확인
+            let mimeType = 'audio/wav';
             if (!MediaRecorder.isTypeSupported(mimeType)) {
-                alert('이 브라우저는 webm/opus 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
+                alert('이 브라우저는 wav 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
                 return;
             }
-            const audioBlob = new Blob([arrayBuffer], { type: 'audio/webm;codecs=opus' });  // 오디오 데이터로 Blob 객체 생성
+            const audioBlob = new Blob([arrayBuffer], { type: 'audio/wav' });  // 오디오 데이터로 Blob 객체 생성
             const audioUrl = URL.createObjectURL(audioBlob);  // Blob을 URL로 변환
             console.log('Audio blob created and URL generated');  // Blob 생성 및 URL 생성 완료 메시지
 
@@ -160,10 +160,10 @@ class AudioManager {
             console.log('Audio stream obtained successfully');
 
             this.audioStream = stream;
-            // MediaRecorder가 audio/webm;codecs=opus를 지원하는지 확인
-            let mimeType = 'audio/webm;codecs=opus';
+            // MediaRecorder가 audio/wav를 지원하는지 확인
+            let mimeType = 'audio/wav';
             if (!MediaRecorder.isTypeSupported(mimeType)) {
-                alert('이 브라우저는 webm/opus 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
+                alert('이 브라우저는 wav 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
                 return false;
             }
             this.mediaRecorder = new MediaRecorder(stream, { mimeType });
@@ -222,12 +222,12 @@ class AudioManager {
 
     getAudioBlob() {
         // 오디오 청크로 Blob 생성
-        if (this.mediaRecorder && this.mediaRecorder.mimeType === 'audio/webm;codecs=opus') {
-            const blob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
+        if (this.mediaRecorder && this.mediaRecorder.mimeType === 'audio/wav') {
+            const blob = new Blob(this.audioChunks, { type: 'audio/wav' });
             console.log('Audio blob created:', blob.size, 'bytes');
             return blob;
         } else {
-            alert('이 브라우저에서는 webm/opus 녹음이 지원되지 않습니다. 최신 Chrome을 사용해 주세요.');
+            alert('이 브라우저에서는 wav 녹음이 지원되지 않습니다. 최신 Chrome을 사용해 주세요.');
             return null;
         }
     }
@@ -312,7 +312,7 @@ class ChatManager {
             console.log('Audio blob size:', audioBlob.size);  // Blob 크기 출력
             
             const formData = new FormData();  // FormData 객체 생성
-            formData.append('audio', audioBlob, 'audio.webm');  // 오디오 Blob 추가
+            formData.append('audio', audioBlob, 'audio.wav');  // 오디오 Blob 추가
             formData.append('character', this.characterType);  // 캐릭터 정보 추가
 
             // API 키 가져오기
