@@ -131,46 +131,50 @@ class AudioManager {
         try {
             // 미디어 디바이스 API 지원 여부 확인
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('Media Devices API not supported');  // 지원하지 않으면 에러 발생
+                throw new Error('Media Devices API not supported');
             }
 
             // 오디오 스트림 생성 설정
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     channelCount: 1,    // 모노 채널 설정
-                    sampleRate: 16000   // 샘플링 레이트 16kHz 설정
+                    sampleRate: 24000   // 샘플링 레이트 24kHz로 변경 (서버와 일치)
                 },
-                video: false  // 비디오 비활성화
+                video: false
             });
-            console.log('Audio stream obtained successfully');  // 오디오 스트림 획득 성공 메시지
+            console.log('Audio stream obtained successfully');
 
-            this.audioStream = stream;  // 오디오 스트림 저장
-            this.mediaRecorder = new MediaRecorder(stream);  // 미디어 레코더 생성
-            
-            // 데이터 사용 가능할 때 이벤트 핸들러
+            this.audioStream = stream;
+            // MediaRecorder가 audio/webm을 지원하는지 확인
+            let mimeType = 'audio/webm;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                alert('이 브라우저는 webm 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
+                return false;
+            }
+            this.mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+            this.audioChunks = [];
             this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {  // 데이터 크기가 0보다 큰 경우에만 처리
-                    this.audioChunks.push(event.data);  // 오디오 청크 배열에 데이터 추가
-                    console.log('Audio chunk received:', event.data.size, 'bytes', 'type:', event.data.type);  // 오디오 청크 수신 정보 출력
+                if (event.data.size > 0) {
+                    this.audioChunks.push(event.data);
+                    console.log('Audio chunk received:', event.data.size, 'bytes', 'type:', event.data.type);
                 }
             };
 
-            // 오디오 컨텍스트와 분석기가 초기화되었는지 확인
             if (this.audioContext && this.analyser) {
-                const source = this.audioContext.createMediaStreamSource(stream);  // 미디어 스트림 소스 생성
-                source.connect(this.analyser);  // 소스를 분석기에 연결
-                console.log('Audio source connected to analyser');  // 오디오 소스 연결 메시지
+                const source = this.audioContext.createMediaStreamSource(stream);
+                source.connect(this.analyser);
+                console.log('Audio source connected to analyser');
             }
 
-            this.mediaRecorder.start(100);  // 레코딩 시작, 100ms마다 데이터 전송
-            this.isRecording = true;  // 녹음 중 플래그 설정
-            console.log('Recording started with format:', this.mediaRecorder.mimeType);  // 녹음 시작 및 포맷 정보 출력
-            return true;  // 녹음 시작 성공
-
+            this.mediaRecorder.start(100);
+            this.isRecording = true;
+            console.log('Recording started with format:', this.mediaRecorder.mimeType);
+            return true;
         } catch (error) {
-            console.error('Failed to start recording:', error);  // 녹음 시작 실패 에러 출력
-            alert('마이크 접근 권한이 필요합니다. 브라우저 설정에서 마이크 권한을 허용해주세요.');  // 마이크 권한 필요 알림
-            return false;  // 녹음 시작 실패
+            console.error('Failed to start recording:', error);
+            alert('마이크 접근 권한이 필요합니다. 브라우저 설정에서 마이크 권한을 허용해주세요.');
+            return false;
         }
     }
 
@@ -203,11 +207,14 @@ class AudioManager {
 
     getAudioBlob() {
         // 오디오 청크로 Blob 생성
-        const blob = new Blob(this.audioChunks, {
-            type: this.mediaRecorder ? this.mediaRecorder.mimeType : 'audio/webm'  // MIME 타입 설정
-        });
-        console.log('Audio blob created:', blob.size, 'bytes');  // Blob 생성 정보 출력
-        return blob;  // Blob 반환
+        if (this.mediaRecorder && this.mediaRecorder.mimeType.startsWith('audio/webm')) {
+            const blob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
+            console.log('Audio blob created:', blob.size, 'bytes');
+            return blob;
+        } else {
+            alert('이 브라우저에서는 webm 녹음이 지원되지 않습니다. 최신 Chrome을 사용해 주세요.');
+            return null;
+        }
     }
 
     getAudioData() {
