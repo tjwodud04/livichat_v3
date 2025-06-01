@@ -15,6 +15,7 @@ import websockets  # WebSocket 연결용
 import asyncio
 import mimetypes
 from pydub import AudioSegment
+from audio_util import convert_audio_with_ffmpeg, get_audio_info_with_ffprobe
 
 # Flask 애플리케이션 초기화
 app = Flask(__name__, 
@@ -269,3 +270,39 @@ def chat():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/convert', methods=['POST'])
+def convert():
+    if 'audio' not in request.files:
+        return jsonify({"error": "No audio file provided"}), 400
+
+    audio_file = request.files['audio']
+    with tempfile.NamedTemporaryFile(suffix='.webm', delete=False, dir='/tmp') as temp_in, \
+         tempfile.NamedTemporaryFile(suffix='.wav', delete=False, dir='/tmp') as temp_out:
+        audio_file.save(temp_in)
+        temp_in_path = temp_in.name
+        temp_out_path = temp_out.name
+
+    # ffmpeg로 변환
+    success = convert_audio_with_ffmpeg(temp_in_path, temp_out_path)
+    if not success:
+        return jsonify({"error": "ffmpeg 변환 실패"}), 500
+
+    # 변환된 파일 반환
+    return send_from_directory(os.path.dirname(temp_out_path), os.path.basename(temp_out_path), as_attachment=True)
+
+@app.route('/api/audio-info', methods=['POST'])
+def audio_info():
+    if 'audio' not in request.files:
+        return jsonify({"error": "No audio file provided"}), 400
+
+    audio_file = request.files['audio']
+    with tempfile.NamedTemporaryFile(suffix='.webm', delete=False, dir='/tmp') as temp_in:
+        audio_file.save(temp_in)
+        temp_in_path = temp_in.name
+
+    info = get_audio_info_with_ffprobe(temp_in_path)
+    if info is None:
+        return jsonify({"error": "ffprobe 분석 실패"}), 500
+
+    return jsonify(info)

@@ -1,23 +1,8 @@
 import io
 from pydub import AudioSegment
 import numpy as np
-# import os
-# import stat
-
-# def ensure_executable(path):
-#     try:
-#         st = os.stat(path)
-#         os.chmod(path, st.st_mode | stat.S_IEXEC)
-#     except Exception as e:
-#         print(f'실행 권한 부여 실패: {path} - {e}')
-
-# # ffmpeg, ffprobe 경로를 bin 폴더로 직접 지정
-# ffmpeg_path = '../bin/ffmpeg'
-# ffprobe_path = '../bin/ffprobe'
-# ensure_executable(ffmpeg_path)
-# ensure_executable(ffprobe_path)
-# AudioSegment.converter = ffmpeg_path
-# AudioSegment.ffprobe = ffprobe_path
+import subprocess
+import os
 
 def convert_webm_to_pcm16(webm_data):
     try:
@@ -42,3 +27,43 @@ def convert_webm_to_pcm16(webm_data):
     except Exception as e:
         print(f"Audio conversion error: {str(e)}")
         return None
+
+def get_ffmpeg_path():
+    # Vercel 환경에서는 프로젝트 루트 기준 상대경로 사용
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', 'ffmpeg')
+
+def convert_audio_with_ffmpeg(input_path, output_path):
+    ffmpeg_path = get_ffmpeg_path()
+    command = [
+        ffmpeg_path,
+        '-i', input_path,
+        '-ar', '24000',  # 샘플레이트 24kHz
+        '-ac', '1',      # 모노
+        '-f', 'wav',
+        output_path
+    ]
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        print('ffmpeg error:', result.stderr.decode())
+        return False
+    return True
+
+def get_ffprobe_path():
+    # Vercel 환경에서는 프로젝트 루트 기준 상대경로 사용
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin', 'ffprobe')
+
+def get_audio_info_with_ffprobe(input_path):
+    ffprobe_path = get_ffprobe_path()
+    command = [
+        ffprobe_path,
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        input_path
+    ]
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        print('ffprobe error:', result.stderr.decode())
+        return None
+    duration = result.stdout.decode().strip()
+    return {'duration': duration}
