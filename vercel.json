@@ -2,10 +2,10 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.py",
+      "src": "scripts/index.py",
       "use": "@vercel/python",
       "config": {
-        "runtime": "python3.9"
+        "runtime": "python3.11"
       }
     },
     {
