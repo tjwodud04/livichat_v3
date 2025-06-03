@@ -145,7 +145,7 @@ def save_conversation(user_input: str, ai_response: str):
 
 
 # 채팅 API 엔드포인트
-@app.route('/api/chat', methods=['POST'])
+@app.route('/scripts/chat', methods=['POST'])
 def chat():
     try:
         if 'audio' not in request.files:
@@ -277,7 +277,7 @@ def chat():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/convert', methods=['POST'])
+@app.route('/scripts/convert', methods=['POST'])
 def convert():
     if 'audio' not in request.files:
         return jsonify({"error": "No audio file provided"}), 400
@@ -297,7 +297,7 @@ def convert():
     # 변환된 파일 반환
     return send_from_directory(os.path.dirname(temp_out_path), os.path.basename(temp_out_path), as_attachment=True)
 
-@app.route('/api/audio-info', methods=['POST'])
+@app.route('/scripts/audio-info', methods=['POST'])
 def audio_info():
     if 'audio' not in request.files:
         return jsonify({"error": "No audio file provided"}), 400

@@ -301,7 +301,7 @@ class ChatManager {
             formData.append('character', this.characterType);  // 캐릭터 정보 추가
 
             console.log('Sending request to server');  // 서버 요청 전송 메시지
-            const response = await fetch('/api/chat', {  // 서버 API 호출
+            const response = await fetch('/scripts/chat', {  // 서버 API 호출
                 method: 'POST',  // POST 메서드 사용
                 body: formData  // FormData를 요청 본문으로 설정
             });
