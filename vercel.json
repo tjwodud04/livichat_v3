@@ -1,5 +1,9 @@
 {
   "version": 2,
+  "includeFiles": [
+    "bin/ffmpeg",
+    "bin/ffprobe"
+  ],
   "builds": [
     {
       "src": "api/index.py",

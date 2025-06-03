@@ -14,7 +14,7 @@ import websockets  # WebSocket 연결용
 import asyncio
 from pydub import AudioSegment
 from audio_util import convert_audio_with_ffmpeg, get_audio_info_with_ffprobe
-import static_ffmpeg
+# import static_ffmpeg
 
 # Flask 애플리케이션 초기화
 app = Flask(__name__, 
@@ -27,7 +27,7 @@ CORS(app)  # CORS 지원 활성화 - 다른 도메인에서의 요청 허용
 BASE_DIR = Path(__file__).resolve().parent  # 현재 파일의 디렉토리 경로 설정
 CONVERSATIONS_FILE = BASE_DIR / "conversations.json"  # 대화 내용을 저장할 파일 경로 설정
 
-static_ffmpeg.add_paths(download_dir="/tmp/static_ffmpeg")
+# static_ffmpeg.add_paths(download_dir="/tmp/static_ffmpeg")
 
 # OpenAI 클라이언트 생성 함수
 def get_openai_client():

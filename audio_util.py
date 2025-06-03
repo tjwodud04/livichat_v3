@@ -3,9 +3,15 @@ from pydub import AudioSegment
 import numpy as np
 import subprocess
 import os
-import static_ffmpeg
+# import static_ffmpeg
 
-static_ffmpeg.add_paths(download_dir="/tmp/static_ffmpeg")
+# static_ffmpeg.add_paths(download_dir="/tmp/static_ffmpeg")
+# ffmpeg_path = static_ffmpeg.get_ffmpeg_path()
+# ffprobe_path = static_ffmpeg.get_ffprobe_path()
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ffmpeg_path = os.path.join(BASE_DIR, 'bin', 'ffmpeg')
+ffprobe_path = os.path.join(BASE_DIR, 'bin', 'ffprobe')
 
 def convert_webm_to_pcm16(webm_data):
     try:
@@ -33,7 +39,7 @@ def convert_webm_to_pcm16(webm_data):
 
 def convert_audio_with_ffmpeg(input_path, output_path):
     command = [
-        'ffmpeg',
+        ffmpeg_path,
         '-i', input_path,
         '-ar', '24000',
         '-ac', '1',
@@ -48,7 +54,7 @@ def convert_audio_with_ffmpeg(input_path, output_path):
 
 def get_audio_info_with_ffprobe(input_path):
     command = [
-        'ffprobe',
+        ffprobe_path,
         '-v', 'error',
         '-show_entries', 'format=duration',
         '-of', 'default=noprint_wrappers=1:nokey=1',
