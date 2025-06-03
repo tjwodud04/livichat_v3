@@ -5,7 +5,7 @@ import subprocess
 import os
 import static_ffmpeg
 
-static_ffmpeg.add_paths()
+static_ffmpeg.add_paths(download_dir="/tmp/static_ffmpeg")
 
 def convert_webm_to_pcm16(webm_data):
     try:
