@@ -27,7 +27,7 @@ CORS(app)  # CORS 지원 활성화 - 다른 도메인에서의 요청 허용
 BASE_DIR = Path(__file__).resolve().parent  # 현재 파일의 디렉토리 경로 설정
 CONVERSATIONS_FILE = BASE_DIR / "conversations.json"  # 대화 내용을 저장할 파일 경로 설정
 
-static_ffmpeg.add_paths()
+static_ffmpeg.add_paths(download_dir="/tmp/static_ffmpeg")
 
 # OpenAI 클라이언트 생성 함수
 def get_openai_client():
