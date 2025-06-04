@@ -5,6 +5,7 @@ from openai import OpenAI  # OpenAI API와 상호작용하기 위한 클라이�
 from datetime import datetime  # 날짜 및 시간 관련 기능 임포트
 from pathlib import Path  # 파일 경로 관리를 위한 클래스 임포트
 
+import requests
 import os  # 운영체제와 상호작용하기 위한 모듈 임포트
 import tempfile  # 임시 파일 및 디렉토리 생성을 위한 모듈 임포트
 import base64  # 바이너리 데이터의 인코딩 및 디코딩을 위한 모듈 임포트
@@ -180,10 +181,6 @@ def chat():
 
             # 5. WebSocket 기반 Realtime API 호출 (비동기 함수 실행)
             async def call_realtime_api(audio_path, system_message, history, api_key):
-                import base64
-                import json
-                import io
-                import requests
                 # 오디오 변환 (pcm16, 24kHz, mono) - Node.js 변환 API 호출
                 with open(audio_path, 'rb') as f:
                     BASE_URL = os.environ.get('CONVERT_API_BASE', 'https://advanced-livichat.vercel.app/')
