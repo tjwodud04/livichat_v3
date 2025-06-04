@@ -183,7 +183,7 @@ def chat():
             async def call_realtime_api(audio_path, system_message, history, api_key):
                 # 오디오 변환 (pcm16, 24kHz, mono) - Node.js 변환 API 호출
                 with open(audio_path, 'rb') as f:
-                    BASE_URL = os.environ.get('CONVERT_API_BASE', 'https://advanced-livichat.vercel.app/')
+                    BASE_URL = os.environ.get('CONVERT_API_BASE', 'https://advanced-livichat.vercel.app')
                     resp = requests.post(f'{BASE_URL}/api/convert', data=f)
                     resp.raise_for_status()
                     pcm_audio = resp.content
