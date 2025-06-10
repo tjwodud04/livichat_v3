@@ -123,7 +123,7 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
             "emotion": top_emotion,
             "emotion_percent": emotion_percent,
         })
-        return final_text_response
+        yield final_text_response      
 
 
 # --- Voice Pipeline 생성 함수 ---
