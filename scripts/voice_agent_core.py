@@ -2,7 +2,7 @@ import asyncio
 from typing import Dict, AsyncGenerator, Callable, Awaitable, Any, List
 
 from agents import Agent, Runner
-from agents.streaming import TextChunk
+from agents.items import TextChunk
 from agents.tool import WebSearchTool
 from agents.voice import (
     VoicePipeline,
