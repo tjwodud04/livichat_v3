@@ -1,15 +1,14 @@
 import asyncio
 from typing import Dict, AsyncGenerator, Callable, Awaitable, Any, List
 
-from agents import Agent
+from agents import Agent, Runner
+from agents.streaming import TextChunk
 from agents.tool import WebSearchTool
 from agents.voice import (
-    VoicePipeline, 
-    VoiceWorkflow, 
-    AudioInput, 
-    AudioOutput, 
-    OpenAIStt, 
-    OpenAITts
+    VoicePipeline,
+    VoiceWorkflowBase,
+    OpenAIStt,
+    OpenAITts,
 )
 
 # --- 검색 Tool 및 Agent 정의 ---
@@ -39,20 +38,18 @@ haru_agent = Agent(
 )
 
 # --- 커스텀 워크플로우 ---
-class CustomHybridWorkflow(VoiceWorkflow):
-    def __init__(self, 
-                 selected_agent: Agent,
+class CustomHybridWorkflow(VoiceWorkflowBase):
+    def __init__(self,
+                 selected_runner: Runner,
                  character_name: str,
-                 stt_model: OpenAIStt,
-                 tts_model: OpenAITts,
                  emotion_analyzer: Callable[[str], Awaitable[Dict[str, Any]]]):
-        super().__init__(stt_model, tts_model)
-        self.selected_agent = selected_agent
+        super().__init__()
+        self.selected_runner = selected_runner
         self.character_name = character_name
         self.emotion_analyzer = emotion_analyzer
 
-    async def run(self, input: AsyncGenerator[AudioInput, None]):
-        user_text = await self.stt_model.transcribe(input)
+    async def run(self, transcript: str) -> AsyncGenerator[str, None]:
+        user_text = transcript
         
         emotion_percent, top_emotion = await self.emotion_analyzer(user_text)
 
@@ -103,13 +100,16 @@ class CustomHybridWorkflow(VoiceWorkflow):
             final_text_response = display_text
             # --------------------------------------------------------
             
-            yield self.tts_model.synthesize(speech_text)
+            yield speech_text
         else:
             # Track 2: 기존과 동일
-            result = await self.selected_agent.run(user_text)
-            final_text_response = result.text
-            
-            yield self.tts_model.synthesize(result.text)
+            ai_speech_text = ""
+            stream = await self.selected_runner.run(messages=[{"role": "user", "content": user_text}])
+            async for item in stream:
+                if isinstance(item, TextChunk):
+                    yield item.text
+                    ai_speech_text += item.text
+            final_text_response = ai_speech_text
 
         # 최종 결과를 딕셔너리 형태로 저장하여, 나중에 쉽게 꺼내 쓸 수 있도록 함
         self.set_result({
@@ -125,19 +125,21 @@ def create_voice_pipeline(api_key: str, character: str, a_emotion_analyzer):
     
     stt_model = OpenAIStt(api_key=api_key, model="whisper-1")
     
-    agents = {"kei": kei_agent, "haru": haru_agent}
+    # 에이전트별 Runner 생성
+    kei_runner = Runner(agent=kei_agent)
+    haru_runner = Runner(agent=haru_agent)
+    
+    runners = {"kei": kei_runner, "haru": haru_runner}
     voice_map = {'kei': 'alloy', 'haru': 'nova'}
     
-    selected_agent = agents.get(character, kei_agent)
+    selected_runner = runners.get(character, kei_runner)
     selected_voice = voice_map.get(character, 'alloy')
     
     tts_model = OpenAITts(api_key=api_key, model="tts-1-hd", voice=selected_voice)
 
     workflow = CustomHybridWorkflow(
-        selected_agent=selected_agent,
+        selected_runner=selected_runner,
         character_name=character,
-        stt_model=stt_model,
-        tts_model=tts_model,
         emotion_analyzer=a_emotion_analyzer
     )
 
