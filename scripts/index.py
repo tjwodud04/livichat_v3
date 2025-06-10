@@ -4,20 +4,16 @@ from flask_cors import CORS  # 교차 출처 리소스 공유(CORS) 기능을 �
 from openai import OpenAI  # OpenAI API와 상호작용하기 위한 클라이언트 임포트
 from datetime import datetime  # 날짜 및 시간 관련 기능 임포트
 from pathlib import Path  # 파일 경로 관리를 위한 클래스 임포트
-
-import requests
-import os  # 운영체제와 상호작용하기 위한 모듈 임포트
-import tempfile  # 임시 파일 및 디렉토리 생성을 위한 모듈 임포트
-import base64  # 바이너리 데이터의 인코딩 및 디코딩을 위한 모듈 임포트
-import json  # JSON 데이터 처리를 위한 모듈 임포트
-import websockets  # WebSocket 연결용
-import asyncio
-import functools
 from scripts.audio_util import convert_webm_to_pcm16
 from agents.voice import AudioInput
-
 # 새로 만든 코어 로직 임포트
 from scripts.voice_agent_core import create_voice_pipeline
+
+import base64  # 바이너리 데이터의 인코딩 및 디코딩을 위한 모듈 임포트
+import asyncio
+import functools
+import threading
+import ast, re
 
 # Flask 애플리케이션 초기화
 app = Flask(__name__, 
@@ -36,9 +32,10 @@ def get_openai_client(api_key):
         abort(401, description="OpenAI API 키가 필요합니다.")
     return OpenAI(api_key=api_key)
 
-# --- 멀티턴 대화 이력(최근 3턴) 관리용 (메모리, 유저별 구분 없음) ---
-# conversation_history = []  # 현재 사용되지 않으므로 주석 처리
-# history_lock = threading.Lock() # 현재 사용되지 않으므로 주석 처리
+# --- 멀티턴 대화 이력(최근 3턴) 관리용 (단일 유저, 텍스트 기반) ---
+conversation_history = []  # [{role: 'user'|'assistant', content: str} ...]
+history_lock = threading.Lock()
+HISTORY_MAX_LEN = 6  # user/assistant 3턴씩
 
 # --- 감정 분석 함수 (웹 컨텍스트, API 키 필요) ---
 async def analyze_emotion(text: str, api_key: str):
@@ -58,7 +55,7 @@ async def analyze_emotion(text: str, api_key: str):
         max_tokens=256,
         temperature=0.0
     )
-    import ast, re
+
     content = response.choices[0].message.content
     match = re.match(r'\s*({.*?})\s*,\s*"([^"]+)"', content)
     if match:
@@ -101,35 +98,6 @@ def serve_css(filename):
 def serve_js(filename):
     return send_from_directory('../front/js', filename)  # ../front/js 디렉토리에서 요청된 JS 파일 제공
 
-
-# 대화 내용을 저장하는 함수 (현재 호출되지 않음, 필요시 주석 해제하여 사용)
-# def save_conversation(user_input: str, ai_response: str):
-#     # 대화 데이터 구조 생성
-#     conversation = {
-#         "timestamp": datetime.now().isoformat(),  # 현재 시간을 ISO 형식으로 저장
-#         "user_input": user_input,  # 사용자 입력 저장
-#         "ai_response": ai_response  # AI 응답 저장
-#     }
-#     try:
-#         # 대화 파일이 이미 존재하는 경우
-#         if CONVERSATIONS_FILE.exists():
-#             with open(CONVERSATIONS_FILE, "r+", encoding='utf-8') as f:  # 읽기/쓰기 모드로 파일 열기, UTF-8 인코딩 사용
-#                 try:
-#                     data = json.load(f)  # 기존 데이터 로드
-#                 except json.JSONDecodeError:
-#                     data = []  # JSON 디코딩 오류 발생 시 빈 리스트로 초기화
-#                 data.append(conversation)  # 새 대화 추가
-#                 f.seek(0)  # 파일 포인터를 파일 시작으로 이동
-#                 json.dump(data, f, ensure_ascii=False, indent=2)  # 데이터를 파일에 쓰기, 비ASCII 문자 유지, 들여쓰기 적용
-#                 f.truncate()  # 파일 크기를 현재 위치로 잘라냄
-#         # 대화 파일이 존재하지 않는 경우
-#         else:
-#             with open(CONVERSATIONS_FILE, "w", encoding='utf-8') as f:  # 쓰기 모드로 파일 열기, UTF-8 인코딩 사용
-#                 json.dump([conversation], f, ensure_ascii=False, indent=2)  # 새 대화를 포함한 리스트를 파일에 쓰기
-#     except Exception as e:
-#         print(f"대화 저장 중 오류 발생: {str(e)}")  # 오류 발생 시 콘솔에 메시지 출력
-
-
 # --- 핵심 채팅 API 엔드포인트 ---
 @app.route('/scripts/chat', methods=['POST'])
 async def chat():
@@ -151,19 +119,33 @@ async def chat():
         audio_bytes = audio_file.read()
         
         # webm -> PCM numpy array 변환 후 AudioInput으로 감싸기
-        pcm_bytes = convert_webm_to_pcm16(audio_bytes)
-        import numpy as np
-        if pcm_bytes is None:
+        samples = convert_webm_to_pcm16(audio_bytes)
+        if samples is None:
             return jsonify({"error": "오디오 변환 실패"}), 500
-        samples = np.frombuffer(pcm_bytes, dtype=np.int16)
         audio_input = AudioInput(buffer=samples, frame_rate=24000, sample_width=2, channels=1)
-        result = await pipeline.run(audio_input)
-        
+
+        # --- 대화 이력에 user 발화 추가 ---
+        with history_lock:
+            conversation_history.append({"role": "user", "content": "(음성 입력)"})  # 실제 텍스트는 pipeline에서 추출됨
+            if len(conversation_history) > HISTORY_MAX_LEN:
+                conversation_history.pop(0)
+
+        # pipeline에 대화 이력 전달 (CustomHybridWorkflow에서 messages 인자로 받도록 수정 필요)
+        result = await pipeline.run(audio_input, history=conversation_history.copy())
+        # result.get_result()에서 user_text, ai_text 추출
         final_result = await result.get_result()
         final_audio_bytes = b"".join([chunk async for chunk in result.audio])
         audio_base64 = base64.b64encode(final_audio_bytes).decode()
-        
-        # save_conversation(final_result.get("user_text"), final_result.get("ai_text")) # 대화 저장 기능 비활성화
+
+        # --- 대화 이력에 실제 user_text, assistant 답변 추가 ---
+        with history_lock:
+            # 마지막 user 발화는 (음성 입력)으로 임시 저장되어 있으니 실제 텍스트로 교체
+            if conversation_history and conversation_history[-1]["role"] == "user":
+                conversation_history[-1]["content"] = final_result.get("user_text", "(음성 입력)")
+            # assistant 답변 추가
+            conversation_history.append({"role": "assistant", "content": final_result.get("ai_text", "")})
+            if len(conversation_history) > HISTORY_MAX_LEN:
+                conversation_history.pop(0)
 
         return jsonify({
             "user_text": final_result.get("user_text"),

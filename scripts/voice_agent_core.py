@@ -1,7 +1,9 @@
 import asyncio
-from typing import Dict, AsyncGenerator, Callable, Awaitable, Any, List
+import re
+import os
 
-from agents import Agent, Runner
+from typing import Dict, AsyncGenerator, Callable, Awaitable, Any
+from agents import Agent
 from agents.tool import WebSearchTool
 from agents.voice import (
     VoicePipeline,
@@ -46,7 +48,7 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
         self.character_name = character_name
         self.emotion_analyzer = emotion_analyzer
 
-    async def run(self, transcript: str) -> AsyncGenerator[str, None]:
+    async def run(self, transcript: str, history=None):
         user_text = transcript
         
         emotion_percent, top_emotion = await self.emotion_analyzer(user_text)
@@ -83,8 +85,7 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
                 speech_text = selected_tone['empathize']
             
             # search_result.text에 포함된 링크들을 파싱하여 추천 목록 생성
-            # Agent가 반환한 텍스트에서 URL들을 직접 추출합니다.
-            import re
+            # Agent가 반환한 텍스트에서 URL들을 직접 추출합니다.            
             url_pattern = re.compile(r'https?://[^\s\n)]+')
             found_urls = url_pattern.findall(search_result.text)
 
@@ -102,7 +103,12 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
         else:
             # Track 2: 기존과 동일
             ai_speech_text = ""
-            stream = await self.selected_runner.run(messages=[{"role": "user", "content": user_text}])
+            # history가 있으면 이력 + 현재 발화, 없으면 기존대로
+            if history:
+                messages = history + [{"role": "user", "content": user_text}]
+            else:
+                messages = [{"role": "user", "content": user_text}]
+            stream = await self.selected_runner.run(messages=messages)
             async for chunk in stream:
                 content = chunk.choices[0].delta.content
                 if content:
@@ -117,12 +123,11 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
             "emotion": top_emotion,
             "emotion_percent": emotion_percent,
         })
+        return final_text_response
 
 
 # --- Voice Pipeline 생성 함수 ---
 def create_voice_pipeline(api_key: str, character: str, a_emotion_analyzer):
-    from agents.voice import VoicePipelineConfig
-
     # 에이전트별 Agent 인스턴스 직접 사용
     runners = {"kei": kei_agent, "haru": haru_agent}
     voice_map = {'kei': 'alloy', 'haru': 'nova'}
@@ -144,8 +149,8 @@ def create_voice_pipeline(api_key: str, character: str, a_emotion_analyzer):
     config.tts_settings.model = 'tts-1-hd'
     config.tts_settings.voice = selected_voice
     config.model_provider = None  # 기본(OpenAIVoiceModelProvider) 사용
+    
     # OpenAI API 키를 환경변수로 전달
-    import os
     os.environ['OPENAI_API_KEY'] = api_key
 
     pipeline = VoicePipeline(
