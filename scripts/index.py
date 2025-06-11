@@ -1,5 +1,4 @@
-# index.py (통합된 전체 코드)
-
+import os
 import io
 import base64
 import asyncio
@@ -107,6 +106,9 @@ async def chat():
         if not api_key:
             return jsonify({"error": "X-API-KEY header is required"}), 401
 
+        # 환경변수에 API 키 설정
+        os.environ['OPENAI_API_KEY'] = api_key
+
         audio_file = request.files['audio']
         character = request.form.get('character', 'kei')
         emotion_analyzer = functools.partial(analyze_emotion, api_key=api_key)
@@ -149,7 +151,6 @@ async def chat():
         final_audio = b"".join(audio_chunks)
         audio_base64 = base64.b64encode(final_audio).decode()
 
-        # 대화 이력에 assistant 추가
         with history_lock:
             conversation_history.append({"role": "assistant", "content": ai_text})
             if len(conversation_history) > HISTORY_MAX_LEN:

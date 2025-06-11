@@ -1,14 +1,12 @@
-# scripts/voice_agent_core.py
-
 import re
 import asyncio
 from typing import Any, AsyncGenerator, Awaitable, Callable, Dict
 
 from agents import Agent, Runner
 from openai.types.responses import ResponseTextDeltaEvent
-from agents.voice import VoiceWorkflowBase
+from agents.voice import VoiceWorkflowBase, VoicePipeline, VoicePipelineConfig
+from agents.voice.model_provider import OpenAIVoiceModelProvider
 from agents.tool import WebSearchTool
-from agents.voice import VoicePipeline, VoicePipelineConfig
 
 # 검색 Tool 및 Agent 정의
 web_search_tool = WebSearchTool()
@@ -65,13 +63,11 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
             # 감정 기반 콘텐츠 검색 트랙
             search_run = await Runner.run(ContentFinderAgent, f"{top_emotion} 감정을 느낄 때 듣기 좋은 노래나 위로가 되는 영상")
             search_text = search_run.final_output
-
             emotion_map = {
                 '분노': '노(화남)', '슬픔': '애(슬픔)',
                 '미움': '오(싫어함)', '두려움': '구(두려움)',
             }
             category = emotion_map.get(top_emotion, "기타")
-
             tones = {
                 'kei': {'suggest': f"그런 {category} 감정을 느끼실 땐, 잠시 다른 곳에 집중해보는 건 어때요? 이런 정보는 어떨까요?",
                         'empathize': f"그런 {category} 감정을 느끼셨군요. 제가 그 마음을 다 헤아릴 순 없겠지만, 함께 방법을 찾아봐요."},
@@ -80,12 +76,10 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
             }
             selected_tone = tones.get(self.character_name, tones['kei'])
             speech_text = selected_tone['empathize'] if category in ['애(슬픔)', '구(두려움)'] else selected_tone['suggest']
-
             urls = re.findall(r'https?://[^\s\n)]+', search_text)
             display = f"{speech_text}\n\n" + ("".join(f"* 추천 콘텐츠 {i+1}: {u}\n" for i,u in enumerate(urls[:3])) or "추천 콘텐츠를 찾지 못했어요.")
             final_text_response = display
             yield speech_text
-
         else:
             # 일반 채팅 스트리밍 트랙
             messages = self.history.copy() + [{"role": "user", "content": user_text}]
@@ -98,7 +92,6 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
                     ai_speech += delta
             final_text_response = ai_speech
 
-        # 최종 결과 저장
         self.set_result({
             "user_text": user_text,
             "ai_text": final_text_response,
@@ -107,6 +100,7 @@ class CustomHybridWorkflow(VoiceWorkflowBase):
         })
         yield final_text_response
 
+# 파이프라인 생성 함수
 def create_voice_pipeline(
     api_key: str,
     character: str,
@@ -131,6 +125,8 @@ def create_voice_pipeline(
     config.stt_settings.model = "whisper-1"
     config.tts_settings.model = "tts-1-hd"
     config.tts_settings.voice = selected_voice
+    # OpenAI 프로바이더 할당
+    config.model_provider = OpenAIVoiceModelProvider(api_key=api_key)
 
     pipeline = VoicePipeline(
         workflow=workflow,
