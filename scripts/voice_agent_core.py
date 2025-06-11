@@ -1,11 +1,8 @@
-import re
-import asyncio
 import json
 from typing import Any, AsyncGenerator, Awaitable, Callable
 from agents import Agent, Runner
 from openai.types.responses import ResponseTextDeltaEvent
 from agents.voice import VoiceWorkflowBase, VoicePipeline, VoicePipelineConfig
-from agents.voice.events import VoiceStreamEventLifecycle
 from agents.voice.models.openai_model_provider import OpenAIVoiceModelProvider
 from agents.tool import WebSearchTool
 

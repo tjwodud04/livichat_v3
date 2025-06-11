@@ -4,7 +4,7 @@ import asyncio
 import functools
 import threading
 import json
-from flask import Flask, request, jsonify, abort, send_from_directory, render_template
+from flask import Flask, request, jsonify, abort, render_template
 from flask_cors import CORS
 from openai import OpenAI
 from agents import Runner
