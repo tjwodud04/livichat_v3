@@ -2,10 +2,10 @@ import os
 import base64
 import asyncio
 import threading
-import time
 import json
 import requests
 import datetime
+
 from flask import Flask, request, jsonify, abort, render_template
 from flask_cors import CORS
 from openai import AsyncOpenAI
@@ -26,6 +26,12 @@ CORS(app)
 CHARACTER_PROMPTS = {
     "kei": "당신은 창의적이고 현대적인 감각을 지닌 캐릭터로, 독특한 은발과 에메랄드빛 눈동자가 특징입니다. 사용자의 이야기에서 감정을 파악하고, 이 감정에 공감 기반이되 실용적인 관점을 놓치지 않고, 따뜻하고 세련된 톤으로 2문장 이내의 답변을 제공해주세요.",
     "haru": "당신은 비즈니스 환경에서 일하는 전문적이고 자신감 있는 여성 캐릭터입니다. 사용자의 이야기에서 감정을 파악하고, 이 감정에 공감하면서도 실용적인 관점에서 명확하고 간단한 해결책을 2문장 이내로 제시해주세요."
+}
+
+# 캐릭터별 OpenAI voice 매핑
+CHARACTER_VOICE = {
+    "kei": "alloy",
+    "haru": "nova"
 }
 
 # --- 대화 이력 관리 ---
@@ -134,7 +140,7 @@ async def chat():
         response = await client.chat.completions.create(
             model="gpt-4o-audio-preview",
             modalities=["text", "audio"],
-            audio={"voice": character, "format": "wav"},
+            audio={"voice": CHARACTER_VOICE.get(character, "nova"), "format": "wav"},
             messages=messages,
             functions=functions,
             function_call="auto" if functions else None,
