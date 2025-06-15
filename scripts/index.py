@@ -1,69 +1,66 @@
 import os
 import base64
 import asyncio
-import functools
 import threading
+import time
 import json
+import requests
+import datetime
 from flask import Flask, request, jsonify, abort, render_template
 from flask_cors import CORS
-from openai import OpenAI
-from agents import Runner
-from agents.voice import AudioInput
+from openai import AsyncOpenAI
 from scripts.audio_util import convert_webm_to_pcm16
-from scripts.voice_agent_core import create_voice_pipeline, ContentFinderAgent
 
-app = Flask(__name__,
-            static_folder='../front',
-            static_url_path='',
-            template_folder='../front')
+app = Flask(
+    __name__,
+    static_folder='../front',
+    static_url_path='',
+    template_folder='../front'
+)
 CORS(app)
 
+# --- 환경 변수 ---
+VERCEL_TOKEN = os.getenv("VERCEL_TOKEN")
+VERCEL_PROJ_ID = os.getenv("VERCEL_PROJECT_ID")
+BLOB_URL = os.environ.get('BLOB_URL') # 기존 로그 방식용 URL
+BLOB_API_TOKEN = os.environ.get('BLOB_API_TOKEN')
+
+# --- 캐릭터 페르소나 ---
+CHARACTER_PROMPTS = {
+    "kei": "당신은 창의적이고 현대적인 감각을 지닌 캐릭터로, 독특한 은발과 에메랄드빛 눈동자가 특징입니다. 사용자의 이야기에서 감정을 파악하고, 이 감정에 공감 기반이되 실용적인 관점을 놓치지 않고, 따뜻하고 세련된 톤으로 2문장 이내의 답변을 제공해주세요.",
+    "haru": "당신은 비즈니스 환경에서 일하는 전문적이고 자신감 있는 여성 캐릭터입니다. 사용자의 이야기에서 감정을 파악하고, 이 감정에 공감하면서도 실용적인 관점에서 명확하고 간단한 해결책을 2문장 이내로 제시해주세요."
+}
+
+# --- 대화 이력 관리 ---
 conversation_history = []
 history_lock = threading.Lock()
-HISTORY_MAX_LEN = 6
+HISTORY_MAX_LEN = 10
+
+# --- Helper Functions ---
 
 def get_openai_client(api_key: str):
     if not api_key:
         abort(401, description="OpenAI API 키가 필요합니다.")
-    return OpenAI(api_key=api_key)
+    return AsyncOpenAI(api_key=api_key)
 
-async def analyze_emotion(text: str, api_key: str):
-    """
-    불교 칠정(희·노·애·낙·애(愛)·오·욕)에 대해
-    반드시 JSON 형식만 반환하도록 강제합니다.
-    """
-    client = get_openai_client(api_key)
-    prompt = (
-        "다음 문장을 분석하여, 반드시 아래 JSON 형식만 출력해 주세요:\n"
-        "{\n"
-        '  "희":0, "노":0, "애":0, "낙":0, "애(愛)":0, "오":0, "욕":0,\n'
-        '  "top_emotion": "희"\n'
-        "}\n"
-        f"문장: {text}"
-    )
-    response = await asyncio.to_thread(
-        client.chat.completions.create,
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=128,
-        temperature=0.0,
-    )
-    content = response.choices[0].message.content.strip()
+def upload_log_to_vercel_blob(blob_name: str, data: dict):
+    """Vercel Blob Storage에 base64-encoded JSON 로그 업로드 (샘플 코드 기반)"""
+    if not VERCEL_TOKEN or not VERCEL_PROJ_ID:
+        print("Vercel 환경변수(VERCEL_TOKEN, VERCEL_PROJECT_ID)가 없어 로그를 저장하지 않습니다.")
+        return
     try:
-        # JSON 오브젝트 부분만 추출
-        obj = json.loads(content)
-        # 키 검증
-        keys = ["희","노","애","낙","애(愛)","오","욕","top_emotion"]
-        if all(k in obj for k in keys):
-            percent = {k: obj[k] for k in keys if k != "top_emotion"}
-            top_emotion = obj["top_emotion"]
-            return percent, top_emotion
+        b64_data = base64.b64encode(json.dumps(data, ensure_ascii=False).encode()).decode()
+        resp = requests.post(
+            "https://api.vercel.com/v2/blob",
+            headers={"Authorization": f"Bearer {VERCEL_TOKEN}"},
+            json={"projectId": VERCEL_PROJ_ID, "data": b64_data, "name": blob_name}
+        )
+        resp.raise_for_status()
+        print(f"로그 저장 성공: {blob_name}")
     except Exception as e:
-        print(f"[analyze_emotion] JSON 파싱 실패: {e}\n원본문자열: {content}")
+        print(f"Vercel Blob 로그 업로드 예외: {e}")
 
-    # 파싱 실패 시 기본값
-    zero = {k: 0 for k in ["희","노","애","낙","애(愛)","오","욕"]}
-    return zero, "희"
+# --- Flask Routes ---
 
 @app.route('/')
 def index():
@@ -73,90 +70,97 @@ def index():
 async def chat():
     try:
         if 'audio' not in request.files:
-            return jsonify({"error": "No audio file provided"}), 400
+            return jsonify(error="오디오 파일이 필요합니다."), 400
         api_key = request.headers.get('X-API-KEY')
-        if not api_key:
-            return jsonify({"error": "X-API-KEY header is required"}), 401
-        os.environ['OPENAI_API_KEY'] = api_key
+        character = request.form.get('character', 'kei')
+        client = get_openai_client(api_key)
 
-        # 1) WebM → PCM 변환
-        webm_bytes = request.files['audio'].read()
-        samples = convert_webm_to_pcm16(webm_bytes)
-        if samples is None:
-            return jsonify({"error": "오디오 변환 실패"}), 500
-        audio_input = AudioInput(buffer=samples, frame_rate=24000, sample_width=2, channels=1)
-
-        # 2) STT → user_text
-        pipeline = create_voice_pipeline(
-            api_key,
-            request.form.get('character', 'kei'),
-            functools.partial(analyze_emotion, api_key=api_key),
-            conversation_history
+        # 1. Whisper STT
+        audio_file = request.files['audio']
+        stt_result = await client.audio.transcriptions.create(
+            file=("audio.webm", audio_file.read()),
+            model="whisper-1",
+            response_format="text"
         )
-        user_text = await pipeline._process_audio_input(audio_input)
+        user_text = stt_result
 
-        # 3) 감정 분석
-        emotion_percent, top_emotion = await analyze_emotion(user_text, api_key)
+        # 2. 감정 분석
+        emotion_resp = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": '다음 문장에서 불교의 칠정(희,노,애,낙,애(사랑),오,욕)에 대해 JSON 형식({"percent": {...}, "top_emotion": "감정"})으로 분석해줘.'},
+                {"role": "user", "content": user_text}
+            ],
+            temperature=0.0,
+            max_tokens=200,
+            response_format={"type": "json_object"}
+        )
+        emotion_data = json.loads(emotion_resp.choices[0].message.content)
+        emotion_percent = emotion_data.get("percent", {})
+        top_emotion = emotion_data.get("top_emotion", "희")
 
-        # 4) 대화 이력 갱신 (user)
+        # 3. 메인 답변 생성
+        system_prompt = CHARACTER_PROMPTS[character]
+        with history_lock:
+            messages = [{"role": "system", "content": system_prompt}, *conversation_history[-HISTORY_MAX_LEN:]]
+        
+        # 감정에 따라 분기하여 웹 검색 여부 및 프롬프트 조정
+        needs_web_search = top_emotion in ["노", "애", "오"]
+        
+        if needs_web_search:
+            messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 따뜻한 위로의 말과 함께 웹 검색을 사용해 관련된 위로가 되는 콘텐츠 URL을 찾아 제안해주세요.)"})
+        else:
+            if top_emotion in ["희", "낙", "애(사랑)"]:
+                 messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 어떤 상황인지 구체적으로 질문하며 공감해주세요.)"})
+            elif top_emotion == "욕":
+                 messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 응원의 메시지를 보내주세요.)"})
+            else:
+                 messages.append({"role": "user", "content": user_text})
+
+
+        # API 호출 (웹 검색 옵션 포함)
+        tools = [{"type": "web_search"}] if needs_web_search else None
+        
+        response = await client.chat.completions.create(
+            model="gpt-4o-audio-preview",
+            modalities=["text", "audio"],
+            audio={"voice": {"kei": "alloy", "haru": "nova"}.get(character, "alloy"), "format": "wav"},
+            messages=messages,
+            tools=tools,
+            tool_choice="auto" if tools else None,
+            temperature=0.7,
+            max_tokens=512
+        )
+        msg = response.choices[0].message
+        
+        # 모델이 웹 검색을 사용하면, 별도 처리 없이 최종 답변이 msg.content에 포함됨
+        ai_text = msg.content or ""
+        audio_b64 = msg.audio.data if msg.audio else ""
+
+        # 4. 대화 기록 갱신 및 로그 저장
         with history_lock:
             conversation_history.append({"role": "user", "content": user_text})
-            if len(conversation_history) > HISTORY_MAX_LEN:
-                conversation_history.pop(0)
-
-        # 5) 감정 분기
-        negative = {'노','애','오'}  # 분노·슬픔·미움에 대응
-        if top_emotion in negative:
-            prompt = f"{top_emotion} 감정을 완화할 수 있는 영상이나 음악 3개의 URL만 JSON 배열로 반환해 주세요."
-            search_run = await Runner.run(ContentFinderAgent, prompt)
-            try:
-                urls = json.loads(search_run.final_output)
-            except:
-                urls = []
-            ai_text = (
-                f"{top_emotion} 감정이 느껴지시는군요. 아래 콘텐츠를 추천드려요:\n" +
-                "\n".join(f"{i+1}. {u}" for i, u in enumerate(urls))
-            )
-        else:
-            client = get_openai_client(api_key)
-            completion = await asyncio.to_thread(
-                client.chat.completions.create,
-                model="gpt-4o",
-                messages=conversation_history.copy(),
-                max_tokens=256,
-                temperature=0.7,
-            )
-            ai_text = completion.choices[0].message.content
-
-        # 6) 대화 이력 갱신 (assistant)
-        with history_lock:
             conversation_history.append({"role": "assistant", "content": ai_text})
             if len(conversation_history) > HISTORY_MAX_LEN:
-                conversation_history.pop(0)
+                conversation_history[:] = conversation_history[-HISTORY_MAX_LEN:]
+        
+        log_data = {
+            "timestamp": datetime.datetime.isoformat() + "Z",
+            "character": character, "user_text": user_text, "emotion_percent": emotion_percent,
+            "top_emotion": top_emotion, "ai_text": ai_text
+        }
+        blob_name = f"logs/{datetime.datetime.strftime('%Y-%m-%dT%H-%M-%SZ')}_{character}.json"
+        asyncio.create_task(asyncio.to_thread(upload_log_to_vercel_blob, blob_name, log_data))
 
-        # 7) TTS → audio chunks + 로깅
-        tts_model = pipeline._get_tts_model()
-        tts_settings = pipeline.config.tts_settings
-        audio_chunks = []
-        async for chunk in tts_model.run(ai_text, tts_settings):
-            print(f"[TTS] chunk size: {len(chunk)} bytes")
-            audio_chunks.append(chunk)
-        raw_pcm = b"".join(audio_chunks)
-
-        # (옵션) PCM → WAV 래핑: WAV 헤더를 추가하려면 여기서 처리
-        audio_base64 = base64.b64encode(raw_pcm).decode()
-
+        # 5. 최종 응답
         return jsonify({
-            "user_text": user_text,
-            "ai_text": ai_text,
-            "audio_base64": audio_base64,
-            "emotion": top_emotion,
-            "emotion_percent": emotion_percent
+            "user_text": user_text, "ai_text": ai_text, "audio_base64": audio_b64,
+            "emotion_percent": emotion_percent, "top_emotion": top_emotion
         })
 
     except Exception as e:
         import traceback; traceback.print_exc()
-        return jsonify({"error": f"Failed to process audio: {e}"}), 500
+        return jsonify({"error": f"Failed to process request: {e}"}), 500
 
 if __name__ == '__main__':
     app.run(port=8001, debug=True)
