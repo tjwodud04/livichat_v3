@@ -132,39 +132,48 @@ async def chat():
             )
             messages.append({"role": "user", "content": user_prompt})
 
-            # ── 검색 모델에 URL 전용 출력 요청 추가 ──
-            messages.insert(0, {
-                "role": "system",
-                "content": "다음 user 메시지에 대해 오직 하나의 YouTube URL만 plain text로 출력하세요. 추가 설명이나 텍스트는 모두 제거합니다."
-            })
+            # --- web search + tts ---
             search_response = await client.chat.completions.create(
-                model="gpt-4o-search-preview",
+                model="gpt-4o-mini-search-preview",
                 messages=messages,
-            )
-            youtube_link = search_response.choices[0].message.content.strip()
-
-            # 음성 변환용 텍스트: 링크 제거
-            text_wo_links = re.sub(r'링크:.*', '', user_prompt).strip()
-
-            # ── 오디오 생성: user_prompt 포함, 링크 읽지 않기 ──
-            audio_messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "system", "content": "아래 텍스트를 읽을 때, '링크:' 이후의 URL은 읽지 마세요."},
-                {"role": "user", "content": user_prompt},
-                {"role": "assistant", "content": text_wo_links}
-            ]
-            audio_response = await client.chat.completions.create(
-                model="gpt-4o-audio-preview",
-                modalities=["text", "audio"],
-                audio={"voice": CHARACTER_VOICE[character], "format": "wav"},
-                messages=audio_messages,
                 temperature=0.7,
                 max_tokens=512,
             )
-            audio_b64 = audio_response.choices[0].message.audio.data
+            result = search_response.choices[0]
+            content = result.message.content
+            annotations = getattr(result.message, 'annotations', None) or []
 
-            # 텍스트로 보여줄 답변: 두 줄 띄우고 링크 표기
-            ai_text = text_wo_links + "\n\n링크: " + youtube_link
+            # 하이퍼링크 변환 (간단 예시)
+            ai_text = content
+            link_list = []
+            for ann in annotations:
+                if ann.get("type") == "url_citation":
+                    url = ann["url_citation"]["url"]
+                    start = ann["url_citation"]["start_index"]
+                    end = ann["url_citation"]["end_index"]
+                    link_text = content[start:end]
+                    a_tag = f'<a href="{url}" target="_blank">{link_text}</a>'
+                    ai_text = ai_text[:start] + a_tag + ai_text[end:]
+                    link_list.append(url)
+            # TTS용 텍스트 (링크 부분 제거)
+            tts_text = content
+            offset = 0
+            for ann in annotations:
+                if ann.get("type") == "url_citation":
+                    start = ann["url_citation"]["start_index"] - offset
+                    end = ann["url_citation"]["end_index"] - offset
+                    tts_text = tts_text[:start] + tts_text[end:]
+                    offset += (end - start)
+            tts_text = tts_text.strip()
+
+            # 음성 생성 (gpt-4o-mini-tts)
+            audio_response = await client.audio.speech.create(
+                model="gpt-4o-mini-tts",
+                voice=CHARACTER_VOICE[character],
+                input=tts_text
+            )
+            audio_b64 = base64.b64encode(audio_response.content).decode()
+            youtube_link = link_list[0] if link_list else None
 
         else:
             # 비검색 분기: user_prompt 생성
@@ -188,36 +197,23 @@ async def chat():
                 )
             messages.append({"role": "user", "content": user_prompt})
 
-            # ── 오디오 생성: user_prompt 포함, 링크 읽지 않기 ──
+            # --- audio-preview ---
             audio_messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "system", "content": "아래 텍스트를 읽을 때, '링크:' 이후의 URL은 읽지 마세요."},
                 {"role": "user", "content": user_prompt}
             ]
             response = await client.chat.completions.create(
-                model="gpt-4o-audio-preview",
+                model="gpt-4o-mini-audio-preview",
                 modalities=["text", "audio"],
                 audio={"voice": CHARACTER_VOICE[character], "format": "wav"},
                 messages=audio_messages,
                 temperature=0.7,
                 max_tokens=512,
             )
-            # 텍스트 응답
             ai_text = response.choices[0].message.content or ""
-            youtube_link = None
-            for line in ai_text.splitlines():
-                if "youtube.com" in line or "youtu.be" in line:
-                    youtube_link = line.strip()
-                    break
-            text_wo_links = re.sub(r'링크:.*', '', ai_text).strip()
-            if not text_wo_links:
-                text_wo_links = "아직 답변을 준비하지 못했어요. 다시 한 번 말씀해주시겠어요?"
             audio_b64 = response.choices[0].message.audio.data
-
-            if youtube_link:
-                ai_text = text_wo_links + "\n\n링크: " + youtube_link
-            else:
-                ai_text = text_wo_links
+            youtube_link = None
 
         # 4. 대화 기록 갱신 및 로그 저장
         with history_lock:
