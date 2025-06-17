@@ -150,7 +150,13 @@ async def chat():
                 temperature=0.7,
                 max_tokens=512,
             )
-            ai_text = response.choices[0].message.content or ""
+            # 응답 전체를 로그로 출력 (디버깅용)
+            print("OpenAI 응답:", response.choices[0].message)
+
+            ai_text = response.choices[0].message.content
+            if not ai_text or ai_text.strip() == "":
+                ai_text = "아직 답변을 준비하지 못했어요. 다시 한 번 말씀해주시겠어요?"
+
             audio_b64 = response.choices[0].message.audio.data if response.choices[0].message.audio else ""
 
         # 4. 대화 기록 갱신 및 로그 저장
