@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "scripts/index.py",
+      "src": "scripts/app.py",
       "use": "@vercel/python",
       "config": {
         "runtime": "python3.11"
@@ -24,7 +24,7 @@
   "routes": [
     {
       "src": "/scripts/(.*)",
-      "dest": "scripts/index.py"
+      "dest": "scripts/app.py"
     },
     {
       "src": "/model/(.*)",
