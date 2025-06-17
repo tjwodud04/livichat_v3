@@ -99,7 +99,7 @@ async def chat():
             response_format={"type": "json_object"}
         )
         emotion_data = json.loads(emotion_resp.choices[0].message.content)
-        emotion_percent = emotion_data.get("percent", {})
+        emotion_percent = emotion_data.get("emotion_percent", {})
         top_emotion = emotion_data.get("top_emotion", "희")
 
         # 3. 메인 답변 생성
@@ -109,50 +109,49 @@ async def chat():
         
         # 감정에 따라 분기하여 웹 검색 여부 및 프롬프트 조정
         needs_web_search = top_emotion in ["노", "애", "오"]
+        ai_text = ""
+        audio_b64 = ""
         
         if needs_web_search:
             messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 따뜻한 위로의 말과 함께 웹 검색을 사용해 관련된 위로가 되는 YouTube 영상 또는 음악 URL을 찾아 제안해주세요.)"})
+            # 1차: 웹 검색 + 텍스트 답변 생성
+            search_response = await client.chat.completions.create(
+                model="gpt-4o-search-preview",
+                messages=messages,
+            )
+            ai_text = search_response.choices[0].message.content or ""
+
+            # 2차: 텍스트 답변을 음성으로 변환
+            audio_response = await client.chat.completions.create(
+                model="gpt-4o-audio-preview",
+                modalities=["text", "audio"],
+                audio={"voice": CHARACTER_VOICE.get(character, "nova"), "format": "wav"},
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "assistant", "content": ai_text}
+                ],
+                temperature=0.7,
+                max_tokens=512,
+            )
+            audio_b64 = audio_response.choices[0].message.audio.data if audio_response.choices[0].message.audio else ""
         else:
             if top_emotion in ["희", "낙", "애(사랑)"]:
-                 messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 어떤 상황인지 구체적으로 질문하며 공감해주세요.)"})
+                messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 어떤 상황인지 구체적으로 질문하며 공감해주세요.)"})
             elif top_emotion == "욕":
-                 messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 응원의 메시지를 보내주세요.)"})
+                messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 응원의 메시지를 보내주세요.)"})
             else:
-                 messages.append({"role": "user", "content": user_text})
-
-
-        # 함수 정의 (Function Calling)
-        functions = None
-        if needs_web_search:
-            functions = [{
-                "name": "web_search",
-                "description": "주어진 감정에 따라 감정 완화에 적합한 YouTube 영상 또는 음악 URL 3개를 반환합니다.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string"}
-                    },
-                    "required": ["query"]
-                }
-            }]
-
-        # Chat + Audio Preview 호출
-        response = await client.chat.completions.create(
-            model="gpt-4o-audio-preview",
-            modalities=["text", "audio"],
-            audio={"voice": CHARACTER_VOICE.get(character, "nova"), "format": "wav"},
-            messages=messages,
-            functions=functions,
-            function_call="auto" if functions else None,
-            temperature=0.7,
-            max_tokens=512,
-        )
-
-        msg = response.choices[0].message
-        
-        # 모델이 웹 검색을 사용하면, 별도 처리 없이 최종 답변이 msg.content에 포함됨
-        ai_text = msg.content or ""
-        audio_b64 = msg.audio.data if msg.audio else ""
+                messages.append({"role": "user", "content": user_text})
+            # 기존 방식
+            response = await client.chat.completions.create(
+                model="gpt-4o-audio-preview",
+                modalities=["text", "audio"],
+                audio={"voice": CHARACTER_VOICE.get(character, "nova"), "format": "wav"},
+                messages=messages,
+                temperature=0.7,
+                max_tokens=512,
+            )
+            ai_text = response.choices[0].message.content or ""
+            audio_b64 = response.choices[0].message.audio.data if response.choices[0].message.audio else ""
 
         # 4. 대화 기록 갱신 및 로그 저장
         with history_lock:
