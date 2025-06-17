@@ -72,6 +72,10 @@ def prettify_message(text):
     text = re.sub(r'링크:\s*', '\n링크: ', text)
     return text.strip()
 
+def markdown_to_html_links(text):
+    """[텍스트](URL) 형태의 마크다운 링크를 <a href="URL" target="_blank">텍스트</a>로 변환"""
+    return re.sub(r'\[([^\]]+)\]\((https?://[^\)]+)\)', r'<a href="\2" target="_blank">\1</a>', text)
+
 # --- Flask Routes ---
 @app.route('/')
 def index():
@@ -153,6 +157,8 @@ async def chat():
                     a_tag = f'<a href="{url}" target="_blank">{link_text}</a>'
                     ai_text = ai_text[:start] + a_tag + ai_text[end:]
                     link_list.append(url)
+            # Markdown 링크를 HTML 링크로 변환
+            ai_text = markdown_to_html_links(ai_text)
             # TTS용 텍스트 (링크 부분 제거)
             tts_text = content
             offset = 0
