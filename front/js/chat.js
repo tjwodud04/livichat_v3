@@ -1,117 +1,107 @@
 // Live2D 모델 관리 클래스
 class Live2DManager {
     constructor() {
-        this.model = null;        // Live2D 모델 객체를 저장할 변수
-        this.app = null;          // PIXI 애플리케이션 객체를 저장할 변수
-        this.canvas = document.getElementById('live2d-canvas');  // HTML에서 Live2D 캔버스 요소를 가져옴
-        window.PIXI = PIXI;       // PIXI 객체를 전역 변수로 설정
-        console.log('Live2DManager initialized');  // Live2DManager가 초기화되었음을 콘솔에 출력
+        this.model = null;
+        this.app = null;
+        this.canvas = document.getElementById('live2d-canvas');
+        window.PIXI = PIXI;
+        console.log('Live2DManager initialized');
     }
 
     async initialize() {
         try {
-            // PIXI 애플리케이션 생성 및 설정
             this.app = new PIXI.Application({
-                view: this.canvas,                // 렌더링할 캔버스 지정
-                transparent: true,                // 배경 투명도 활성화
-                autoStart: true,                  // 자동 시작 활성화
-                resolution: window.devicePixelRatio || 1,  // 디바이스 픽셀 비율에 맞게 해상도 설정
-                antialias: true,                  // 안티앨리어싱 활성화
-                autoDensity: true,                // 자동 밀도 조정 활성화
-                backgroundColor: 0xffffff,        // 배경색 흰색으로 설정
-                backgroundAlpha: 0                // 배경 완전 투명으로 설정
+                view: this.canvas,
+                transparent: true,
+                autoStart: true,
+                resolution: window.devicePixelRatio || 1,
+                antialias: true,
+                autoDensity: true,
+                backgroundColor: 0xffffff,
+                backgroundAlpha: 0
             });
-            console.log('PIXI Application created successfully');  // PIXI 애플리케이션 생성 성공 메시지
+            console.log('PIXI Application created successfully');
 
-            const modelPath = '/model/kei/kei_vowels_pro.model3.json';  // Live2D 모델 파일 경로 설정
-            console.log('Loading Live2D model from:', modelPath);  // 모델 로딩 시작 메시지
-            this.model = await PIXI.live2d.Live2DModel.from(modelPath);  // 모델 파일로부터 Live2D 모델 로드
-            console.log('Live2D model loaded successfully');  // 모델 로딩 성공 메시지
+            const modelPath = '/model/kei/kei_vowels_pro.model3.json';
+            console.log('Loading Live2D model from:', modelPath);
+            this.model = await PIXI.live2d.Live2DModel.from(modelPath);
+            console.log('Live2D model loaded successfully');
 
-            // 모델 크기와 위치 조정
-            this.model.scale.set(0.5);  // 크기를 0.65에서 0.5로 축소
-            this.model.anchor.set(0.5, 0.5);  // 앵커 포인트를 중앙으로 설정
-            this.model.x = this.app.screen.width / 2;  // X 위치를 화면 중앙으로 설정
-            this.model.y = this.app.screen.height / 2;  // Y 위치를 화면 중앙으로 설정
+            this.model.scale.set(0.5);
+            this.model.anchor.set(0.5, 0.5);
+            this.model.x = this.app.screen.width / 2;
+            this.model.y = this.app.screen.height / 2;
 
-            this.app.stage.addChild(this.model);  // PIXI 스테이지에 모델 추가
-            this.setExpression('neutral');  // 초기 표정을 'neutral'로 설정
+            this.app.stage.addChild(this.model);
+            this.setExpression('neutral');
         } catch (error) {
-            console.error('Live2D model loading failed:', error);  // 모델 로딩 실패 시 에러 출력
+            console.error('Live2D model loading failed:', error);
         }
     }
 
     setExpression(expression) {
-        if (this.model) {  // 모델이 로드되었는지 확인
+        if (this.model) {
             try {
-                console.log('Setting expression to:', expression);  // 표정 설정 시작 메시지
-                this.model.expression(expression);  // 모델의 표정 설정
+                console.log('Setting expression to:', expression);
+                this.model.expression(expression);
             } catch (error) {
-                console.error('Failed to update Live2D expression:', error);  // 표정 업데이트 실패 시 에러 출력
+                console.error('Failed to update Live2D expression:', error);
             }
         }
     }
 
     async playAudioWithLipSync(audioBase64) {
-        if (!this.model) {  // 모델이 로드되지 않았으면 함수 종료
-            console.warn('Live2D model not initialized');  // 모델 초기화 안됨 경고
+        if (!this.model) {
+            console.warn('Live2D model not initialized');
             return;
         }
 
         try {
-            console.log('Starting audio playback with lip sync');  // 립싱크와 함께 오디오 재생 시작 메시지
-            const audioData = atob(audioBase64);  // Base64 인코딩된 오디오 데이터 디코딩
-            const arrayBuffer = new ArrayBuffer(audioData.length);  // 오디오 데이터 길이의 버퍼 생성
-            const uint8Array = new Uint8Array(arrayBuffer);  // 8비트 부호 없는 정수 배열 생성
-
-            // 디코딩된 오디오 데이터를 바이트 배열로 변환
+            console.log('Starting audio playback with lip sync');
+            const audioData = atob(audioBase64);
+            const arrayBuffer = new ArrayBuffer(audioData.length);
+            const uint8Array = new Uint8Array(arrayBuffer);
             for (let i = 0; i < audioData.length; i++) {
                 uint8Array[i] = audioData.charCodeAt(i);
             }
 
-            // MediaRecorder가 audio/webm을 지원하는지 확인
             let mimeType = 'audio/webm;codecs=opus';
             if (!MediaRecorder.isTypeSupported(mimeType)) {
                 alert('이 브라우저는 webm 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
                 return;
             }
-            const audioBlob = new Blob([arrayBuffer], { type: 'audio/webm;codecs=opus' });  // 오디오 데이터로 Blob 객체 생성
-            const audioUrl = URL.createObjectURL(audioBlob);  // Blob을 URL로 변환
-            console.log('Audio blob created and URL generated');  // Blob 생성 및 URL 생성 완료 메시지
+            const audioBlob = new Blob([arrayBuffer], { type: mimeType });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            console.log('Audio blob created and URL generated');
 
-            // 모델로 오디오 재생 및 립싱크 시작
             this.model.speak(audioUrl, {
-                volume: 1.0,  // 볼륨 설정
-                crossOrigin: "anonymous"  // 크로스 오리진 설정
+                volume: 1.0,
+                crossOrigin: 'anonymous'
             });
 
-            // 오디오 재생이 완료될 때까지 기다리는 Promise 반환
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    URL.revokeObjectURL(audioUrl);  // 생성된 URL 해제
-                    console.log('Audio playback completed, URL revoked');  // 오디오 재생 완료 및 URL 해제 메시지
-                    resolve();  // Promise 해결
-                }, 500);  // 0.5초 후 실행
+                    URL.revokeObjectURL(audioUrl);
+                    console.log('Audio playback completed, URL revoked');
+                    resolve();
+                }, 500);
             });
         } catch (error) {
-            console.error('Audio playback error:', error);  // 오디오 재생 에러 출력
-            this.setExpression('neutral');  // 에러 발생 시 표정을 'neutral'로 재설정
+            console.error('Audio playback error:', error);
+            this.setExpression('neutral');
         }
     }
 
     stopSpeaking() {
-        if (this.model) {  // 모델이 로드되었는지 확인
-            console.log('Stopping speech and resetting expression');  // 말하기 중지 및 표정 재설정 메시지
-            this.model.stopSpeaking();  // 모델의 말하기 중지
-            this.setExpression('neutral');  // 표정을 'neutral'로 재설정
+        if (this.model) {
+            console.log('Stopping speech and resetting expression');
+            this.model.stopSpeaking();
+            this.setExpression('neutral');
         }
     }
 
-    // 립싱크(입모양) 수동 제어 함수 추가
     updateLipSync(volume) {
         if (this.model && this.model.internalModel && this.model.internalModel.coreModel) {
-            // volume(0~1) 값에 따라 입모양 파라미터를 조정
-            // Kei/haru 모두 ParamMouthOpenY 사용
             this.model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', volume);
         }
     }
@@ -120,47 +110,36 @@ class Live2DManager {
 // 오디오 녹음 및 업로드 관리 클래스
 class AudioManager {
     constructor() {
-        this.mediaRecorder = null;  // 미디어 레코더 객체를 저장할 변수
-        this.audioChunks = [];      // 오디오 청크를 저장할 배열
-        this.isRecording = false;   // 녹음 중인지 여부를 나타내는 플래그
-        this.audioContext = null;   // 오디오 컨텍스트 객체를 저장할 변수
-        this.analyser = null;       // 오디오 분석기 객체를 저장할 변수
-        this.processor = null;      // 오디오 프로세서 객체를 저장할 변수
-        this.audioStream = null;    // 오디오 스트림 객체를 저장할 변수
-        this.initAudioContext();    // 오디오 컨텍스트 초기화 함수 호출
-        console.log('AudioManager initialized');  // AudioManager 초기화 완료 메시지
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.isRecording = false;
+        this.audioContext = null;
+        this.analyser = null;
+        this.processor = null;
+        this.audioStream = null;
+        this.initAudioContext();
+        console.log('AudioManager initialized');
     }
 
     initAudioContext() {
         try {
-            // 브라우저에 맞는 AudioContext 생성
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            this.analyser = this.audioContext.createAnalyser();  // 오디오 분석기 생성
-            console.log('Audio context initialized successfully');  // 오디오 컨텍스트 초기화 성공 메시지
+            this.analyser = this.audioContext.createAnalyser();
+            console.log('Audio context initialized successfully');
         } catch (error) {
-            console.error('Failed to initialize audio context:', error);  // 오디오 컨텍스트 초기화 실패 에러 출력
+            console.error('Failed to initialize audio context:', error);
         }
     }
 
     async startRecording() {
         try {
-            // 미디어 디바이스 API 지원 여부 확인
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error('Media Devices API not supported');
             }
-
-            // 오디오 스트림 생성 설정
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,    // 모노 채널 설정
-                    sampleRate: 24000   // 샘플링 레이트 24kHz로 변경 (서버와 일치)
-                },
-                video: false
-            });
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 24000 }, video: false });
             console.log('Audio stream obtained successfully');
 
             this.audioStream = stream;
-            // MediaRecorder가 audio/webm을 지원하는지 확인
             let mimeType = 'audio/webm;codecs=opus';
             if (!MediaRecorder.isTypeSupported(mimeType)) {
                 alert('이 브라우저는 webm 녹음을 지원하지 않습니다. 최신 Chrome을 사용해 주세요.');
@@ -194,36 +173,29 @@ class AudioManager {
     }
 
     stopRecording() {
-        return new Promise((resolve) => {  // Promise 반환
-            if (this.mediaRecorder && this.isRecording) {  // 미디어 레코더가 있고 녹음 중인 경우
-                console.log('Stopping recording');  // 녹음 중지 메시지
-                
-                // 녹음 중지 이벤트 핸들러
+        return new Promise((resolve) => {
+            if (this.mediaRecorder && this.isRecording) {
+                console.log('Stopping recording');
                 this.mediaRecorder.onstop = () => {
-                    const blob = this.getAudioBlob();  // 오디오 Blob 획득
-                    this.audioChunks = [];  // 오디오 청크 배열 초기화
-                    this.isRecording = false;  // 녹음 중 플래그 해제
-                    
-                    // 오디오 스트림이 있으면 모든 트랙 중지
+                    const blob = this.getAudioBlob();
+                    this.audioChunks = [];
+                    this.isRecording = false;
                     if (this.audioStream) {
                         this.audioStream.getTracks().forEach(track => track.stop());
-                        this.audioStream = null;  // 오디오 스트림 초기화
+                        this.audioStream = null;
                     }
-                    
-                    resolve(blob);  // Promise 해결, Blob 반환
+                    resolve(blob);
                 };
-                
-                this.mediaRecorder.stop();  // 미디어 레코더 중지
+                this.mediaRecorder.stop();
             } else {
-                resolve(null);  // 녹음 중이 아니면 null 반환
+                resolve(null);
             }
         });
     }
 
     getAudioBlob() {
-        // 오디오 청크로 Blob 생성
         if (this.mediaRecorder && this.mediaRecorder.mimeType.startsWith('audio/webm')) {
-            const blob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
+            const blob = new Blob(this.audioChunks, { type: this.mediaRecorder.mimeType });
             console.log('Audio blob created:', blob.size, 'bytes');
             return blob;
         } else {
@@ -233,118 +205,108 @@ class AudioManager {
     }
 
     getAudioData() {
-        if (!this.analyser) {  // 분석기가 없으면 빈 배열 반환
-            console.warn('Analyser not initialized');  // 분석기 초기화 안됨 경고
-            return new Uint8Array();  // 빈 Uint8Array 반환
+        if (!this.analyser) {
+            console.warn('Analyser not initialized');
+            return new Uint8Array();
         }
-        const dataArray = new Uint8Array(this.analyser.frequencyBinCount);  // 분석기 주파수 빈 카운트 크기의 배열 생성
-        this.analyser.getByteTimeDomainData(dataArray);  // 시간 도메인 데이터 가져오기
-        return dataArray;  // 데이터 배열 반환
+        const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+        this.analyser.getByteTimeDomainData(dataArray);
+        return dataArray;
     }
 }
 
 // 채팅 및 대화 이력 관리 클래스
 class ChatManager {
-    constructor(characterType = 'kei') {  // 기본값으로 'kei' 설정
-        this.chatHistory = document.getElementById('chatHistory');  // 채팅 기록 DOM 요소 가져오기
-        this.isPlaying = false;  // 오디오 재생 중인지 여부를 나타내는 플래그
-        this.conversationHistory = []; // 컨텍스트를 위한 대화 기록 저장
-        this.characterType = characterType;  // 캐릭터 타입 저장
-        console.log('ChatManager initialized');  // ChatManager 초기화 완료 메시지
+    constructor(characterType = 'kei') {
+        this.chatHistory = document.getElementById('chatHistory');
+        this.isPlaying = false;
+        this.conversationHistory = [];
+        this.characterType = characterType;
+        console.log('ChatManager initialized');
     }
 
-    addMessage(role, message) {
-        console.log(`Adding ${role} message:`, message);  // 메시지 추가 정보 출력
+    /**
+     * @param {'user'|'ai'|'system'} role
+     * @param {string} message
+     * @param {string|null} link  클릭 가능한 링크 (옵셔널)
+     */
+    addMessage(role, message, link = null) {
+        console.log(`Adding ${role} message:`, message);
+        const messageElement = document.createElement('div');
+        messageElement.className = `message ${role}-message`;
 
-        const messageElement = document.createElement('div');  // 메시지 요소 생성
-        messageElement.className = `message ${role}-message`;  // 메시지 클래스 설정
-
-        // AI 메시지인 경우 프로필 추가
         if (role === 'ai') {
-            const profile = document.createElement('div');  // 프로필 요소 생성
-            profile.className = 'message-profile';  // 프로필 클래스 설정
-
-            // 캐릭터별 프로필 이미지 설정
-            const characterImg = document.createElement('img');  // 이미지 요소 생성
-            characterImg.src = role === 'ai' ? (
+            const profile = document.createElement('div');
+            profile.className = 'message-profile';
+            const characterImg = document.createElement('img');
+            characterImg.src = (
                 this.characterType === 'haru' ? '/model/haru/profile.jpg' :
                 this.characterType === 'kei' ? '/model/kei/profile.jpg' :
                 '/model/momose/profile.jpg'
-            ) : '';  // 캐릭터 타입에 따른 이미지 경로 설정
-            profile.appendChild(characterImg);  // 프로필에 이미지 추가
-
-            messageElement.appendChild(profile);  // 메시지 요소에 프로필 추가
+            );
+            profile.appendChild(characterImg);
+            messageElement.appendChild(profile);
         }
 
-        const messageBubble = document.createElement('div');  // 메시지 버블 요소 생성
-        messageBubble.className = 'message-bubble';  // 메시지 버블 클래스 설정
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble';
 
-        const content = document.createElement('div');  // 콘텐츠 요소 생성
-        content.className = 'message-content';  // 콘텐츠 클래스 설정
-        // 링크 자동 변환 (ai 메시지에만 적용)
+        const content = document.createElement('div');
+        content.className = 'message-content';
         if (role === 'ai') {
-            // '링크: '로 시작하는 줄을 <a> 태그로 변환
-            let html = message.replace(/링크: (https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]*)/g, function(match, url) {
-                return `<a href="${url}" target="_blank">${url}</a>`;
-            });
-            // 줄바꿈 처리
-            html = html.replace(/\n/g, '<br>');
-            content.innerHTML = html;
+            // 줄바꿈 처리 및 기본 텍스트 표시
+            content.innerHTML = message.replace(/\n/g, '<br>');
         } else {
             content.textContent = message;
         }
+        messageBubble.appendChild(content);
 
-        const time = document.createElement('span');  // 시간 요소 생성
-        time.className = 'message-time';  // 시간 클래스 설정
-        const now = new Date();  // 현재 시간 생성
-        time.textContent = now.toLocaleTimeString('ko-KR', {
-            hour: '2-digit',  // 시간 2자리
-            minute: '2-digit'  // 분 2자리
-        });  // 시간 텍스트 설정
+        // 링크가 별도 넘어왔다면 추가 렌더링
+        if (role === 'ai' && link) {
+            const linkWrap = document.createElement('div');
+            linkWrap.className = 'message-link';
+            const a = document.createElement('a');
+            a.href = link;
+            a.target = '_blank';
+            a.textContent = '▶️ 제안 링크 보기';
+            linkWrap.appendChild(a);
+            messageElement.appendChild(linkWrap);
+        }
 
-        messageBubble.appendChild(content);  // 버블에 콘텐츠 추가
-        messageBubble.appendChild(time);  // 버블에 시간 추가
-        messageElement.appendChild(messageBubble);  // 메시지 요소에 버블 추가
+        const time = document.createElement('span');
+        time.className = 'message-time';
+        time.textContent = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
-        this.chatHistory.appendChild(messageElement);  // 채팅 기록에 메시지 요소 추가
-        this.chatHistory.scrollTop = this.chatHistory.scrollHeight;  // 스크롤을 아래로 이동
+        messageBubble.appendChild(time);
+        messageElement.appendChild(messageBubble);
+        this.chatHistory.appendChild(messageElement);
+        this.chatHistory.scrollTop = this.chatHistory.scrollHeight;
 
-        // 대화 기록에 메시지 추가
-        this.conversationHistory.push({
-            role: role === 'user' ? 'user' : 'assistant',  // 역할 설정
-            content: message  // 내용 설정
-        });
+        this.conversationHistory.push({ role: role === 'user' ? 'user' : 'assistant', content: message });
     }
 
     async sendAudioToServer(audioBlob) {
         try {
-            console.log('Preparing to send audio to server');  // 서버로 오디오 전송 준비 메시지
-            console.log('Audio blob type:', audioBlob.type);  // Blob 타입 출력
-            console.log('Audio blob size:', audioBlob.size);  // Blob 크기 출력
-            
-            const formData = new FormData();  // FormData 객체 생성
-            formData.append('audio', audioBlob, 'audio.webm');  // 오디오 Blob 추가
-            formData.append('character', this.characterType);  // 캐릭터 정보 추가
-
-            // API 키 가져오기
+            console.log('Preparing to send audio to server');
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'audio.webm');
+            formData.append('character', this.characterType);
+          
             const apiKey = localStorage.getItem('openai_api_key');
-
-            console.log('Sending request to server');  // 서버 요청 전송 메시지
-            const response = await fetch('/scripts/chat', {  // 서버 API 호출
-                method: 'POST',  // POST 메서드 사용
-                body: formData,  // FormData를 요청 본문으로 설정
-                headers: {
-                    'X-API-KEY': apiKey || ''
-                }
+            console.log('Sending request to server');
+            const response = await fetch('/scripts/chat', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-API-KEY': apiKey || '' }
             });
 
-            if (!response.ok) {  // 응답이 성공이 아닌 경우
-                const errorText = await response.text();  // 에러 텍스트 가져오기
-                console.error('Server error response:', errorText);  // 서버 에러 응답 출력
-                throw new Error(`Server responded with ${response.status}: ${errorText}`);  // 에러 발생
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Server error response:', errorText);
+                throw new Error(`Server responded with ${response.status}: ${errorText}`);
             }
 
-            const data = await response.json();  // 응답 데이터를 JSON으로 파싱
+            const data = await response.json();
             console.log('Server response received:', data);  // 서버 응답 수신 메시지
             return data;  // 데이터 반환
         } catch (error) {

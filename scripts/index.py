@@ -23,7 +23,6 @@ app = Flask(
 )
 CORS(app)
 
-
 # --- 캐릭터 페르소나 ---
 CHARACTER_SYSTEM_PROMPTS = {
     "kei": "당신은 창의적이고 현대적인 감각을 지닌 캐릭터입니다. 사용자의 감정에 공감하며 따뜻하게 대화합니다.",
@@ -31,7 +30,6 @@ CHARACTER_SYSTEM_PROMPTS = {
 }
 
 # 캐릭터별 OpenAI voice 매핑
-# alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, and shimmer.
 CHARACTER_VOICE = {
     "kei": "alloy",
     "haru": "shimmer"
@@ -43,14 +41,13 @@ history_lock = threading.Lock()
 HISTORY_MAX_LEN = 10
 
 # --- Helper Functions ---
-
 def get_openai_client(api_key: str):
     if not api_key:
         abort(401, description="OpenAI API 키가 필요합니다.")
     return AsyncOpenAI(api_key=api_key)
 
 def upload_log_to_vercel_blob(blob_name: str, data: dict):
-    """Vercel Blob Storage에 base64-encoded JSON 로그 업로드 (샘플 코드 기반)"""
+    """Vercel Blob Storage에 base64-encoded JSON 로그 업로드"""
     if not VERCEL_TOKEN or not VERCEL_PROJ_ID:
         print("Vercel 환경변수(VERCEL_TOKEN, VERCEL_PROJECT_ID)가 없어 로그를 저장하지 않습니다.")
         return
@@ -76,7 +73,6 @@ def prettify_message(text):
     return text.strip()
 
 # --- Flask Routes ---
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -117,75 +113,109 @@ async def chat():
         # 3. 메인 답변 생성
         system_prompt = CHARACTER_SYSTEM_PROMPTS[character]
         with history_lock:
-            messages = [{"role": "system", "content": system_prompt}, *conversation_history[-HISTORY_MAX_LEN:]]
+            messages = [{"role": "system", "content": system_prompt}] + conversation_history[-HISTORY_MAX_LEN:]
 
         # 감정에 따라 분기하여 웹 검색 여부 및 프롬프트 조정
         needs_web_search = top_emotion in ["노", "애", "오"]
         ai_text = ""
         audio_b64 = ""
+        youtube_link = None
 
         if needs_web_search:
-            user_prompt = f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 따뜻한 위로의 말과 함께 웹 검색을 사용해 관련된 위로가 되는 유튜브 음악 URL을 찾아 제안해주세요.)\n아래와 같은 구조로 2~3문장 이내로 답변하세요:\n1. 공감의 한마디\n2. 상황에 어울리는 제안(이럴 때는 ~ 어떤가요?)\n3. 제안에 대한 간단한 설명"
+            user_prompt = (
+                f"{user_text}\n"
+                f"(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 따뜻한 위로의 말과 함께 웹 검색을 사용해 관련된 위로가 되는 유튜브 음악 URL을 찾아 제안해주세요.)\n"
+                "아래와 같은 구조로 2~3문장 이내로 답변하세요:\n"
+                "1. 공감의 한마디\n"
+                "2. 상황에 어울리는 제안(이럴 때는 ~ 어떤가요?)\n"
+                "3. 제안에 대한 간단한 설명"
+            )
             messages.append({"role": "user", "content": user_prompt})
+
+            # ── 검색 모델에 URL 전용 출력 요청 추가 ──
+            messages.insert(0, {
+                "role": "system",
+                "content": "다음 user 메시지에 대해 오직 하나의 YouTube URL만 plain text로 출력하세요. 추가 설명이나 텍스트는 모두 제거합니다."
+            })
             search_response = await client.chat.completions.create(
                 model="gpt-4o-search-preview",
                 messages=messages,
             )
-            ai_text = search_response.choices[0].message.content or ""
-            # 유튜브 링크만 추출
-            youtube_link = None
-            for line in ai_text.splitlines():
-                if 'youtube.com' in line or 'youtu.be' in line:
-                    youtube_link = line.strip()
-                    break
-            # 음성 변환용 텍스트(링크 제거)
-            text_wo_links = re.sub(r'링크:.*', '', ai_text).strip()
+            youtube_link = search_response.choices[0].message.content.strip()
+
+            # 음성 변환용 텍스트: 링크 제거
+            text_wo_links = re.sub(r'링크:.*', '', user_prompt).strip()
+
+            # ── 오디오 생성: user_prompt 포함, 링크 읽지 않기 ──
+            audio_messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": "아래 텍스트를 읽을 때, '링크:' 이후의 URL은 읽지 마세요."},
+                {"role": "user", "content": user_prompt},
+                {"role": "assistant", "content": text_wo_links}
+            ]
             audio_response = await client.chat.completions.create(
                 model="gpt-4o-audio-preview",
                 modalities=["text", "audio"],
-                audio={"voice": CHARACTER_VOICE.get(character, "nova"), "format": "wav"},
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "assistant", "content": text_wo_links}
-                ],
+                audio={"voice": CHARACTER_VOICE[character], "format": "wav"},
+                messages=audio_messages,
                 temperature=0.7,
                 max_tokens=512,
             )
             audio_b64 = audio_response.choices[0].message.audio.data
-            # ai_text는 유튜브 링크만 남기고, 나머지 링크 제거
-            if youtube_link:
-                ai_text = text_wo_links + f"\n링크: {youtube_link}"
-            else:
-                ai_text = text_wo_links
+
+            # 텍스트로 보여줄 답변: 두 줄 띄우고 링크 표기
+            ai_text = text_wo_links + "\n\n링크: " + youtube_link
+
         else:
+            # 비검색 분기: user_prompt 생성
             if top_emotion in ["희", "낙", "애(사랑)"]:
-                user_prompt = f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 어떤 상황인지 구체적으로 질문하며 공감해주세요.)\n아래와 같은 구조로 2~3문장 이내로 답변하세요:\n1. 공감의 한마디\n2. 상황에 어울리는 제안(이럴 때는 ~ 어떤가요?)\n3. 제안에 대한 간단한 설명"
+                user_prompt = (
+                    f"{user_text}\n"
+                    f"(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 어떤 상황인지 구체적으로 질문하며 공감해주세요.)\n"
+                )
             elif top_emotion == "욕":
-                user_prompt = f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 응원의 메시지를 보내주세요.)\n아래와 같은 구조로 2~3문장 이내로 답변하세요:\n1. 공감의 한마디\n2. 상황에 어울리는 제안(이럴 때는 ~ 어떤가요?)\n3. 제안에 대한 간단한 설명"
+                user_prompt = (
+                    f"{user_text}\n"
+                    f"(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 응원의 메시지를 보내주세요.)\n"
+                )
             else:
-                user_prompt = f"{user_text}\n아래와 같은 구조로 2~3문장 이내로 답변하세요:\n1. 공감의 한마디\n2. 상황에 어울리는 제안(이럴 때는 ~ 어떤가요?)\n3. 제안에 대한 간단한 설명"
+                user_prompt = (
+                    f"{user_text}\n"
+                    "아래와 같은 구조로 2~3문장 이내로 답변하세요:\n"
+                    "1. 공감의 한마디\n"
+                    "2. 상황에 어울리는 제안(이럴 때는 ~ 어떤가요?)\n"
+                    "3. 제안에 대한 간단한 설명"
+                )
             messages.append({"role": "user", "content": user_prompt})
+
+            # ── 오디오 생성: user_prompt 포함, 링크 읽지 않기 ──
+            audio_messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": "아래 텍스트를 읽을 때, '링크:' 이후의 URL은 읽지 마세요."},
+                {"role": "user", "content": user_prompt}
+            ]
             response = await client.chat.completions.create(
                 model="gpt-4o-audio-preview",
                 modalities=["text", "audio"],
-                audio={"voice": CHARACTER_VOICE.get(character, "alloy"), "format": "wav"},
-                messages=messages,
+                audio={"voice": CHARACTER_VOICE[character], "format": "wav"},
+                messages=audio_messages,
                 temperature=0.7,
                 max_tokens=512,
             )
-            ai_text = response.choices[0].message.content
-            # 유튜브 링크만 추출
+            # 텍스트 응답
+            ai_text = response.choices[0].message.content or ""
             youtube_link = None
             for line in ai_text.splitlines():
-                if 'youtube.com' in line or 'youtu.be' in line:
+                if "youtube.com" in line or "youtu.be" in line:
                     youtube_link = line.strip()
                     break
             text_wo_links = re.sub(r'링크:.*', '', ai_text).strip()
-            if not ai_text or ai_text.strip() == "":
-                ai_text = "아직 답변을 준비하지 못했어요. 다시 한 번 말씀해주시겠어요?"
+            if not text_wo_links:
+                text_wo_links = "아직 답변을 준비하지 못했어요. 다시 한 번 말씀해주시겠어요?"
             audio_b64 = response.choices[0].message.audio.data
+
             if youtube_link:
-                ai_text = text_wo_links + f"\n링크: {youtube_link}"
+                ai_text = text_wo_links + "\n\n링크: " + youtube_link
             else:
                 ai_text = text_wo_links
 
@@ -198,18 +228,24 @@ async def chat():
 
         log_data = {
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
-            "character": character, "user_text": user_text, "emotion_percent": emotion_percent,
-            "top_emotion": top_emotion, "ai_text": ai_text
+            "character": character,
+            "user_text": user_text,
+            "emotion_percent": emotion_percent,
+            "top_emotion": top_emotion,
+            "ai_text": ai_text
         }
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(datetime.timezone.utc)
         blob_name = f"logs/{now.strftime('%Y-%m-%dT%H-%M-%SZ')}_{character}.json"
         asyncio.create_task(asyncio.to_thread(upload_log_to_vercel_blob, blob_name, log_data))
 
-        # 5. 최종 응답
-        ai_text = remove_empty_parentheses(ai_text)
+        # 5. 최종 응답 (별도 link 필드 추가)
         return jsonify({
-            "user_text": user_text, "ai_text": ai_text, "audio": audio_b64,
-            "emotion_percent": emotion_percent, "top_emotion": top_emotion
+            "user_text": user_text,
+            "ai_text": remove_empty_parentheses(ai_text),
+            "audio": audio_b64,
+            "emotion_percent": emotion_percent,
+            "top_emotion": top_emotion,
+            "link": youtube_link
         })
 
     except Exception as e:

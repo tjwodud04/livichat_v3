@@ -391,3 +391,34 @@ body {
     font-size: 1.1em;
     font-weight: bold;
 }
+
+/* Chat bubbles 아래쪽에 링크 버튼을 띄우려면 */
+/* style.css 또는 main.css 말미에 추가 */
+
+.message-link {
+    margin-top: 6px;           /* 메시지 본문과 살짝 간격 */
+    font-size: 0.9em;          /* 조금 작은 크기 */
+    text-align: left;          /* 왼쪽 정렬 */
+}
+
+.message-link a {
+    color: #2b7cff;            /* 눈에 잘 띄는 링크 컬러 */
+    text-decoration: none;     
+    font-weight: 500;          /* 가독성 향상용 굵기 */
+}
+
+.message-link a:hover {
+    text-decoration: underline;
+}
+
+/* .ai-message의 경우, 인라인이 아니라
+   아래로 내려가도록 flex-direction 보장 */
+.ai-message {
+    flex-direction: column;    
+    align-items: flex-start;
+}
+
+.user-message {
+    flex-direction: column;    
+    align-items: flex-end;
+}
