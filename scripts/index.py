@@ -5,6 +5,7 @@ import threading
 import json
 import requests
 import datetime
+import re
 
 from flask import Flask, request, jsonify, abort, render_template
 from flask_cors import CORS
@@ -29,9 +30,10 @@ CHARACTER_PROMPTS = {
 }
 
 # 캐릭터별 OpenAI voice 매핑
+# alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, and shimmer.
 CHARACTER_VOICE = {
     "kei": "alloy",
-    "haru": "nova"
+    "haru": "shimmer"
 }
 
 # --- 대화 이력 관리 ---
@@ -62,6 +64,15 @@ def upload_log_to_vercel_blob(blob_name: str, data: dict):
         print(f"로그 저장 성공: {blob_name}")
     except Exception as e:
         print(f"Vercel Blob 로그 업로드 예외: {e}")
+
+def remove_source_links(text):
+    # 마크다운 링크 [텍스트](URL) 제거
+    text = re.sub(r'\[.*?\]\(.*?\)', '', text)
+    # 괄호로 된 URL/출처 제거 (예: (https://...))
+    text = re.sub(r'\(https?:\/\/[^\)]*\)', '', text)
+    # 남은 이중 공백 정리
+    text = re.sub(r'\s{2,}', ' ', text)
+    return text.strip()
 
 # --- Flask Routes ---
 
@@ -99,7 +110,7 @@ async def chat():
             response_format={"type": "json_object"}
         )
         emotion_data = json.loads(emotion_resp.choices[0].message.content)
-        emotion_percent = emotion_data.get("emotion_percent", {})
+        emotion_percent = emotion_data.get("percent", {})
         top_emotion = emotion_data.get("top_emotion", "희")
 
         # 3. 메인 답변 생성
@@ -133,7 +144,9 @@ async def chat():
                 temperature=0.7,
                 max_tokens=512,
             )
-            audio_b64 = audio_response.choices[0].message.audio.data if audio_response.choices[0].message.audio else ""
+            # audio_b64 = audio_response.choices[0].message.audio.data if audio_response.choices[0].message.audio else ""
+            audio_b64 = audio_response.choices[0].message.audio.data
+            
         else:
             if top_emotion in ["희", "낙", "애(사랑)"]:
                 messages.append({"role": "user", "content": f"{user_text}\n(사용자가 '{top_emotion}' 감정을 느끼고 있습니다. 어떤 상황인지 구체적으로 질문하며 공감해주세요.)"})
@@ -145,7 +158,7 @@ async def chat():
             response = await client.chat.completions.create(
                 model="gpt-4o-audio-preview",
                 modalities=["text", "audio"],
-                audio={"voice": CHARACTER_VOICE.get(character, "nova"), "format": "wav"},
+                audio={"voice": CHARACTER_VOICE.get(character, "alloy"), "format": "wav"},
                 messages=messages,
                 temperature=0.7,
                 max_tokens=512,
@@ -154,10 +167,13 @@ async def chat():
             print("OpenAI 응답:", response.choices[0].message)
 
             ai_text = response.choices[0].message.content
+            print(ai_text)
+            
             if not ai_text or ai_text.strip() == "":
                 ai_text = "아직 답변을 준비하지 못했어요. 다시 한 번 말씀해주시겠어요?"
 
-            audio_b64 = response.choices[0].message.audio.data if response.choices[0].message.audio else ""
+            # audio_b64 = response.choices[0].message.audio.data if response.choices[0].message.audio else ""
+            audio_b64 = response.choices[0].message.audio.data
 
         # 4. 대화 기록 갱신 및 로그 저장
         with history_lock:
@@ -176,6 +192,7 @@ async def chat():
         asyncio.create_task(asyncio.to_thread(upload_log_to_vercel_blob, blob_name, log_data))
 
         # 5. 최종 응답
+        ai_text = remove_source_links(ai_text)
         return jsonify({
             "user_text": user_text, "ai_text": ai_text, "audio_base64": audio_b64,
             "emotion_percent": emotion_percent, "top_emotion": top_emotion
