@@ -168,7 +168,7 @@ async def chat():
         needs_web_search = top_emotion in ["노", "애", "오"]
         ai_text = ""
         audio_b64 = ""
-        youtube_link = None
+        # link_list는 web_search 분기에서만 사용
 
         if needs_web_search:
             user_prompt = (
@@ -204,6 +204,22 @@ async def chat():
                     link_list.append(url)
             # Markdown 링크를 HTML 링크로 변환
             ai_text = markdown_to_html_links(ai_text)
+            # link 추출 보완
+            if link_list:
+                youtube_link = link_list[0]
+            else:
+                # 마크다운 링크에서 추출 시도
+                youtube_link = extract_first_markdown_url(content)
+                if not youtube_link:
+                    # 하드코딩 데이터에서 랜덤 추천
+                    candidates = EMOTION_LINKS.get(top_emotion, [])
+                    if candidates:
+                        _, youtube_link = random.choice(candidates)
+                    else:
+                        youtube_link = None
+            # ai_text에 추천 링크가 포함되어 있지 않으면 하단에 추가
+            if youtube_link and youtube_link not in ai_text:
+                ai_text += f'<br><a href="{youtube_link}" target="_blank">▶️ 추천 음악 바로 듣기</a>'
             # TTS용 텍스트 (링크 부분 제거)
             tts_text = content
             offset = 0
@@ -222,23 +238,6 @@ async def chat():
                 input=tts_text
             )
             audio_b64 = base64.b64encode(audio_response.content).decode()
-            if link_list:
-                youtube_link = link_list[0]
-            else:
-                # 마크다운 링크에서 추출 시도
-                youtube_link = extract_first_markdown_url(content)
-                if not youtube_link:
-                    # 하드코딩 데이터에서 랜덤 추천
-                    candidates = EMOTION_LINKS.get(top_emotion, [])
-                    if candidates:
-                        _, youtube_link = random.choice(candidates)
-                    else:
-                        youtube_link = None
-
-            # ai_text에 추천 링크가 포함되어 있지 않으면 하단에 추가
-            if youtube_link and youtube_link not in ai_text:
-                ai_text += f'<br><a href="{youtube_link}" target="_blank">▶️ 추천 음악 바로 듣기</a>'
-
         else:
             # 비검색 분기: user_prompt 생성
             if top_emotion in ["희", "낙", "애(사랑)"]:
@@ -277,22 +276,7 @@ async def chat():
             )
             ai_text = response.choices[0].message.content or ""
             audio_b64 = response.choices[0].message.audio.data
-            if link_list:
-                youtube_link = link_list[0]
-            else:
-                # 마크다운 링크에서 추출 시도
-                youtube_link = extract_first_markdown_url(content)
-                if not youtube_link:
-                    # 하드코딩 데이터에서 랜덤 추천
-                    candidates = EMOTION_LINKS.get(top_emotion, [])
-                    if candidates:
-                        _, youtube_link = random.choice(candidates)
-                    else:
-                        youtube_link = None
-
-            # ai_text에 추천 링크가 포함되어 있지 않으면 하단에 추가
-            if youtube_link and youtube_link not in ai_text:
-                ai_text += f'<br><a href="{youtube_link}" target="_blank">▶️ 추천 음악 바로 듣기</a>'
+            youtube_link = None
 
         # 4. 대화 기록 갱신 및 로그 저장
         with history_lock:
