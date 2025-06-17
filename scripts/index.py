@@ -136,8 +136,6 @@ async def chat():
             search_response = await client.chat.completions.create(
                 model="gpt-4o-mini-search-preview",
                 messages=messages,
-                temperature=0.7,
-                max_tokens=512,
             )
             result = search_response.choices[0]
             content = result.message.content
