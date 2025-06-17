@@ -406,19 +406,7 @@ body {
     text-decoration: none;     
     font-weight: 500;          /* 가독성 향상용 굵기 */
 }
-
+    
 .message-link a:hover {
     text-decoration: underline;
-}
-
-/* .ai-message의 경우, 인라인이 아니라
-   아래로 내려가도록 flex-direction 보장 */
-.ai-message {
-    flex-direction: column;    
-    align-items: flex-start;
-}
-
-.user-message {
-    flex-direction: column;    
-    align-items: flex-end;
 }
