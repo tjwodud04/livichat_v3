@@ -2,6 +2,13 @@
 
 This project demonstrates a character chat application using OpenAI's voice recognition and generation capabilities integrated with Live2D avatars. Users can engage in voice-based conversations with characters, with responses tailored to the user's emotions.
 
+### Video
+<video src="prototype_video/Prototype_Video.mp4" controls width="300">
+  <track kind="subtitles" src="prototype_video/Prototype_Video.srt" srclang="en" label="English">
+</video>
+
+[Watch Prototype Video](prototype_video/Prototype_Video.mp4)
+
 ## Key Features
 
 - **Voice Interaction**: Speak to the character using your microphone, and receive voice responses.
