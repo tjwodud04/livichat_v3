@@ -1,4 +1,4 @@
-# Live2D Character Chat
+## Live2D Character Chat
 
 This project demonstrates a character chat application using OpenAI's voice recognition and generation capabilities integrated with Live2D avatars. Users can engage in voice-based conversations with characters, with responses tailored to the user's emotions.
 
@@ -9,15 +9,7 @@ This project demonstrates a character chat application using OpenAI's voice reco
 
 [Watch Prototype Video](prototype_video/Prototype_Video.mp4)
 
-## Key Features
-
-- **Voice Interaction**: Speak to the character using your microphone, and receive voice responses.
-- **Emotion Analysis**: User speech is analyzed for emotions (joy, anger, sorrow, etc.), and the character responds empathetically.
-- **Live2D Integration**: Characters (Kei, Haru) display expressions and lip-sync in response to the conversation.
-- **Initial Greeting**: Upon loading, the character greets with "Nice to meet you. Tell me how you're feeling right now."
-- **API Key Input**: Users must input their OpenAI API key to use the service.
-
-## Installation and Setup
+### Installation and Setup
 
 1. Clone the repository:
 
@@ -44,10 +36,6 @@ This project demonstrates a character chat application using OpenAI's voice reco
 
 4. Access the application at `http://localhost:8001` in your browser.
 
-## Deployment on Vercel
-
-- The `vercel.json` configuration is included for easy deployment on Vercel.
-- Environment variables (e.g., OpenAI key, Vercel token) must be set in the Vercel dashboard.
 
 ## Usage
 
@@ -85,8 +73,6 @@ This project demonstrates a character chat application using OpenAI's voice reco
 
 - **OpenAI API Key Required**: An API key is mandatory to use the service (no free provision).
 - **Vercel Free Plan**: Deployment may be slow due to large audio/model files.
-- **Data Handling**: All conversation/audio data is processed in real-time and not stored (except for optional Vercel Blob integration).
-- **Mobile Support**: Basic support is available, but some browsers may have limitations with Live2D/audio features.
 - **Demo/Research Purpose**: The code is intended for demonstration and research purposes, not for large-scale deployment.
 
 ## FAQ
