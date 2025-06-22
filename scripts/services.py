@@ -119,8 +119,11 @@ async def process_chat(request):
                         youtube_link = None
             if youtube_link and youtube_link not in ai_text:
                 ai_text += f'<br><a href="{youtube_link}" target="_blank">▶️ 추천 음악 바로 듣기</a>'
-            tts_text = content
+            # tts_text = content
+            tts_text = remove_empty_parentheses(content)
+            tts_text = remove_emojis(tts_text)            
             offset = 0
+            
             for ann in annotations:
                 if getattr(ann, "type", None) == "url_citation":
                     start = ann.url_citation.start_index - offset
@@ -128,7 +131,6 @@ async def process_chat(request):
                     tts_text = tts_text[:start] + tts_text[end:]
                     offset += (end - start)
             tts_text = tts_text.strip()
-            tts_text = remove_emojis(tts_text)
 
             audio_response = await client.audio.speech.create(
                 model="gpt-4o-mini-tts",
@@ -164,10 +166,14 @@ async def process_chat(request):
                 max_tokens=512,
             )
             ai_text = response.choices[0].message.content or ""
+            # 추가 문구
+            ai_text = remove_emojis(ai_text)
+            
             if not ai_text:
                 ai_text = "아직 답변을 준비하지 못했어요. 다시 한 번 말씀해주시겠어요?"
 
             tts_text = re.sub(r'링크:.*', '', ai_text).strip()
+            # 추가 문구
             tts_text = remove_emojis(tts_text)
 
             audio_response = await client.audio.speech.create(
