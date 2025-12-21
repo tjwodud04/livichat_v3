@@ -1,50 +1,59 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 캐릭터와 대화하기</title>
+    <title>Talk with AI Character</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
+    <!-- Language Switcher -->
+    <div class="lang-switcher">
+        <a href="index.html" class="lang-btn active">ENG</a>
+        <span class="lang-divider">|</span>
+        <a href="index-ko.html" class="lang-btn">KOR</a>
+    </div>
+
     <div class="main-container">
-        <h1 class="title">당신의 AI와 대화하기</h1>
-        <p class="subtitle">대화하고 싶은 캐릭터를 선택해주세요</p>
+        <h1 class="title">Talk with AI</h1>
+        <p class="subtitle">Please choose the character you'd like to talk to</p>
         <div class="card-container">
-            <a href="kei.html" class="card">
+            <a href="hiyori.html" class="card">
                 <div class="card-profile">
-                    <img src="/model/kei/100px_profile.jpg" alt="Kei 프로필">
+                    <img src="/img/momose_profile.PNG" alt="Hiyori Profile">
                 </div>
                 <div class="card-content">
-                    <h2>Kei와 대화하기</h2>
-                    <p>창의적이고 현대적인 감각의 실용적인 스타일의 캐릭터</p>
+                    <h2>Momose Hiyori</h2>
+                    <p class="persona-age">Student</p>
+                    <p>Speak in a friendly, bright, and lively manner</p>
                 </div>
             </a>
             <a href="haru.html" class="card">
                 <div class="card-profile">
-                    <img src="/model/haru/100px_profile.jpg" alt="Haru 프로필">
+                    <img src="/img/haru_profile.PNG" alt="Haru Profile">
                 </div>
                 <div class="card-content">
-                    <h2>Haru와 대화하기</h2>
-                    <p>전문적이고 자신감 있는 비즈니스 전문가 스타일의 캐릭터</p>
+                    <h2>Haru</h2>
+                    <p class="persona-age">Receptionist</p>
+                    <p>Offer advice in a professional and confident manner</p>
                 </div>
             </a>
         </div>
         <div class="api-key-section" style="display: flex; justify-content: flex-end; margin-top: 16px;">
-            <button id="setApiKeyBtn" class="api-key-btn">OpenAI API 키 변경</button>
+            <button id="setApiKeyBtn" class="api-key-btn">Change OpenAI API Key</button>
         </div>
     </div>
 
-    <!-- API 키 입력 모달 -->
+    <!-- API Key Input Modal -->
     <div id="apiKeyModal" class="modal">
         <div class="modal-content">
-            <h2>OpenAI API 키 설정</h2>
-            <p>대화를 시작하기 위해 OpenAI API 키를 입력해주세요.</p>
+            <h2>OpenAI API Key Setup</h2>
+            <p>Please enter your OpenAI API key to start the conversation</p>
             <input type="password" id="apiKeyInput" placeholder="sk-..." class="api-key-input">
             <div class="modal-buttons">
-                <button id="saveApiKey" class="primary-btn">저장</button>
-                <button id="closeModal" class="secondary-btn">취소</button>
+                <button id="saveApiKey" class="primary-btn">Save</button>
+                <button id="closeModal" class="secondary-btn">Cancel</button>
             </div>
         </div>
     </div>

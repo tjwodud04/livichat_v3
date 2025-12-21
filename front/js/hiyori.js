@@ -1,5 +1,5 @@
-// Haru character page - WebRTC Realtime API integration
-// Main application script for haru.html
+// Hiyori character page - WebRTC Realtime API integration
+// Main application script for hiyori.html
 
 // ============================================================================
 // Live2D Model Manager
@@ -15,7 +15,7 @@ class Live2DManager {
 
     async initialize() {
         try {
-            // Match canvas to left panel size
+            // 캔버스를 왼쪽 패널 크기에 맞춤
             const leftPanel = this.canvas.parentElement;
             const width = leftPanel.clientWidth;
             const height = leftPanel.clientHeight;
@@ -33,22 +33,22 @@ class Live2DManager {
                 backgroundAlpha: 0
             });
 
-            const modelPath = '/model/haru/haru_greeter_t05.model3.json';
+            const modelPath = '/model/hiyori/hiyori_pro_t11.model3.json';
             console.log('[Live2DManager] Loading model:', modelPath);
             this.model = await PIXI.live2d.Live2DModel.from(modelPath);
 
             this.app.stage.addChild(this.model);
 
-            // Fit model to canvas
+            // 모델 크기와 위치 조정
             this._fitModelToCanvas();
 
-            // Setup lip sync parameters
+            // Setup lip sync - manually set lipSyncIds if not defined by library
             this._setupLipSync();
 
             // Start idle motion
             this._startIdleMotion();
 
-            // Handle window resize
+            // 윈도우 리사이즈 대응
             window.addEventListener('resize', () => this._onResize());
 
             console.log('[Live2DManager] Model loaded successfully');
@@ -63,11 +63,11 @@ class Live2DManager {
         const canvasWidth = this.app.screen.width;
         const canvasHeight = this.app.screen.height;
 
-        // Get model original size (at scale 1.0)
+        // 모델 원본 크기 (scale 1.0 기준)
         const modelWidth = this.model.width / this.model.scale.x;
         const modelHeight = this.model.height / this.model.scale.y;
 
-        // Calculate scale to fit canvas (with 10% margin)
+        // 캔버스에 맞는 스케일 계산 (여백 10% 포함)
         const scaleX = (canvasWidth * 0.9) / modelWidth;
         const scaleY = (canvasHeight * 0.9) / modelHeight;
         const scale = Math.min(scaleX, scaleY);
@@ -75,7 +75,7 @@ class Live2DManager {
         this.model.scale.set(scale);
         this.model.anchor.set(0.5, 0.5);
         this.model.x = canvasWidth / 2;
-        this.model.y = canvasHeight * 0.45;  // Slightly above center
+        this.model.y = canvasHeight * 0.4;  // 약간 위로
     }
 
     _onResize() {
@@ -94,7 +94,13 @@ class Live2DManager {
         const internalModel = this.model.internalModel;
         const coreModel = internalModel.coreModel;
 
+        // Log model structure for debugging
         console.log('[Live2DManager] Setting up lip sync...');
+        console.log('[Live2DManager] lipSyncIds before setup:', internalModel.lipSyncIds);
+
+        // For pixi-live2d-display Cubism 4 models:
+        // lipSyncIds should be an array of CubismId objects
+        // If not set, we need to create it manually
 
         if (coreModel && coreModel._model) {
             try {
@@ -111,11 +117,25 @@ class Live2DManager {
                         break;
                     }
                 }
+
+                // Try to set lipSyncIds for library-level lip sync support
+                // pixi-live2d-display expects CubismId objects in lipSyncIds array
+                if (!internalModel.lipSyncIds || internalModel.lipSyncIds.length === 0) {
+                    // Get CubismId from framework if available
+                    const framework = window.Live2DCubismFramework;
+                    if (framework && framework.CubismFramework) {
+                        const idManager = framework.CubismFramework.getIdManager();
+                        const mouthParamCubismId = idManager.getId('ParamMouthOpenY');
+                        internalModel.lipSyncIds = [mouthParamCubismId];
+                        console.log('[Live2DManager] Set lipSyncIds to:', internalModel.lipSyncIds);
+                    }
+                }
             } catch (e) {
-                console.log('[Live2DManager] Could not setup lip sync params:', e.message);
+                console.log('[Live2DManager] Could not setup lipSyncIds:', e.message);
             }
         }
 
+        // Store reference to coreModel for direct parameter access
         this._coreModel = coreModel;
         console.log('[Live2DManager] Lip sync setup complete');
     }
@@ -124,7 +144,7 @@ class Live2DManager {
         if (this.model && this.model.internalModel) {
             try {
                 // Try to play idle motion if available
-                this.model.motion('idle');
+                this.model.motion('Idle');
             } catch (e) {
                 console.log('[Live2DManager] No idle motion available');
             }
@@ -174,6 +194,7 @@ class Live2DManager {
         this._getVisemes = getVisemesFn;
 
         // Hook into the model's internal update cycle
+        // This ensures lip sync is applied AFTER motion updates but BEFORE rendering
         if (this.model && this.model.internalModel) {
             const internalModel = this.model.internalModel;
 
@@ -184,7 +205,7 @@ class Live2DManager {
 
             // Override update to inject lip sync after motion processing
             internalModel.update = (dt, now) => {
-                // First, let the original update run
+                // First, let the original update run (processes motions, physics, etc.)
                 this._originalUpdateFn(dt, now);
 
                 // Then apply lip sync to override mouth parameter
@@ -203,7 +224,7 @@ class Live2DManager {
         console.log('[Live2DManager] Lip sync ticker started');
     }
 
-    // Apply lip sync AFTER motion update
+    // Apply lip sync AFTER motion update - this ensures our values aren't overwritten
     _applyLipSyncAfterMotion(visemes) {
         if (!this.model || !this.model.internalModel) return;
 
@@ -212,7 +233,7 @@ class Live2DManager {
 
         if (!coreModel || !coreModel._model) return;
 
-        // Direct parameter array access
+        // Direct parameter array access - most reliable method
         if (this._mouthParamIndex !== undefined && coreModel._model.parameters?.values) {
             coreModel._model.parameters.values[this._mouthParamIndex] = mouthOpen;
         }
@@ -224,12 +245,88 @@ class Live2DManager {
         }
     }
 
+    _lipSyncTick() {
+        // Kept for compatibility but main lip sync now happens in model.update hook
+        if (!this._getVisemes) return;
+        const visemes = this._getVisemes();
+        if (visemes) {
+            this._applyLipSyncDirect(visemes);
+        }
+    }
+
+    // Direct lip sync application - set parameter value directly on Cubism Core model
+    // This runs after motion updates to override mouth position
+    _applyLipSyncDirect(visemes) {
+        if (!this.model || !this.model.internalModel) return;
+
+        try {
+            // Calculate mouth open amount from visemes (amplified for visibility)
+            const mouthOpen = Math.min(1, Math.max(visemes.aa, visemes.oh * 0.8) * 1.5);
+            const internalModel = this.model.internalModel;
+            const coreModel = internalModel.coreModel;
+
+            if (!coreModel || !coreModel._model) return;
+
+            // Debug: Log structure once
+            if (!this._structureLogged) {
+                console.log('[Live2DManager] Lip sync direct mode');
+                console.log('[Live2DManager] coreModel._model:', !!coreModel._model);
+
+                // Find ParamMouthOpenY index if not already found
+                if (this._mouthParamIndex === undefined) {
+                    try {
+                        // Access Cubism Core directly
+                        const model = coreModel._model;
+                        const paramCount = model.parameters.count;
+                        console.log('[Live2DManager] Parameter count:', paramCount);
+
+                        for (let i = 0; i < paramCount; i++) {
+                            const paramId = model.parameters.ids[i];
+                            if (paramId === 'ParamMouthOpenY') {
+                                this._mouthParamIndex = i;
+                                console.log('[Live2DManager] ParamMouthOpenY index:', i);
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.log('[Live2DManager] Could not find param index:', e.message);
+                    }
+                }
+                this._structureLogged = true;
+            }
+
+            // Method 1: Direct Cubism Core parameter array access (most reliable)
+            if (this._mouthParamIndex !== undefined && coreModel._model?.parameters?.values) {
+                coreModel._model.parameters.values[this._mouthParamIndex] = mouthOpen;
+            }
+            // Method 2: Also set internalModel.lipSync for library integration
+            internalModel.lipSync = mouthOpen;
+
+            // Log first success
+            if (!this._lipSyncAppliedLogged && mouthOpen > 0.1) {
+                console.log('[Live2DManager] Lip sync applied - mouthOpen:', mouthOpen.toFixed(3),
+                    'paramIndex:', this._mouthParamIndex);
+                this._lipSyncAppliedLogged = true;
+            }
+        } catch (e) {
+            if (!this._lipSyncTickerErrorLogged) {
+                console.error('[Live2DManager] Ticker lip sync error:', e);
+                this._lipSyncTickerErrorLogged = true;
+            }
+        }
+    }
+
     stopLipSyncTicker() {
         if (this._lipSyncTickerAdded) {
             // Restore original update function
             if (this._originalUpdateFn && this.model && this.model.internalModel) {
                 this.model.internalModel.update = this._originalUpdateFn;
                 console.log('[Live2DManager] Restored original model update');
+            }
+
+            // Remove PIXI ticker if it was added
+            if (this.app) {
+                this.app.ticker.remove(this._lipSyncTick, this);
             }
 
             this._lipSyncTickerAdded = false;
@@ -239,8 +336,11 @@ class Live2DManager {
     }
 
     // Update lip sync with viseme values from audio analysis
+    // Reference: https://docs.live2d.com/en/cubism-sdk-tutorials/native-lipsync-from-wav-web/
     updateLipSync(visemes) {
-        if (!this.model || !this.model.internalModel) return;
+        if (!this.model || !this.model.internalModel) {
+            return;
+        }
 
         try {
             // Calculate mouth open amount from visemes (amplified for visibility)
@@ -251,17 +351,40 @@ class Live2DManager {
 
             if (!coreModel) return;
 
-            // Direct Cubism Core parameter array access
-            if (this._mouthParamIndex !== undefined && coreModel._model?.parameters?.values) {
-                coreModel._model.parameters.values[this._mouthParamIndex] = mouthOpen;
+            // For Cubism 4 models in pixi-live2d-display:
+            // Use setParameterValueById with the lipSyncIds from model settings
+            // The model's .model3.json defines "LipSync" group with "ParamMouthOpenY"
+
+            // Get the lip sync parameter ID
+            let lipSyncParamId = 'ParamMouthOpenY';  // Default standard ID
+            if (internalModel.settings?.groups) {
+                const lipSyncGroup = internalModel.settings.groups.find(g => g.Name === 'LipSync');
+                if (lipSyncGroup && lipSyncGroup.Ids && lipSyncGroup.Ids.length > 0) {
+                    lipSyncParamId = lipSyncGroup.Ids[0];
+                }
             }
 
-            // Also set internalModel.lipSync for library integration
-            internalModel.lipSync = mouthOpen;
+            // Apply lip sync value using the core model's API
+            // For Cubism 4: coreModel is CubismModel from Live2D Cubism SDK
+            if (typeof coreModel.setParameterValueById === 'function') {
+                // Cubism 4 SDK method - weight 0.8 as per official docs
+                coreModel.setParameterValueById(lipSyncParamId, mouthOpen, 0.8);
+            } else if (coreModel._model && coreModel._model.parameters) {
+                // Fallback: Direct access to Cubism 4 Core internal model
+                const params = coreModel._model.parameters;
+                if (params.ids && params.values) {
+                    const idx = params.ids.indexOf(lipSyncParamId);
+                    if (idx !== -1) {
+                        // Blend with existing value (similar to addParameterValue behavior)
+                        params.values[idx] = params.values[idx] * 0.2 + mouthOpen * 0.8;
+                    }
+                }
+            }
 
-            // Debug log (once)
+            // Debug: Log first successful update
             if (!this._lipSyncDebugLogged && mouthOpen > 0.1) {
-                console.log('[Live2DManager] Lip sync applied - mouthOpen:', mouthOpen.toFixed(3));
+                console.log('[Live2DManager] Lip sync applied - mouthOpen:', mouthOpen.toFixed(3),
+                            'paramId:', lipSyncParamId);
                 this._lipSyncDebugLogged = true;
             }
         } catch (error) {
@@ -305,7 +428,7 @@ class ChatManager {
             const profile = document.createElement('div');
             profile.className = 'message-profile';
             const characterImg = document.createElement('img');
-            characterImg.src = '/img/haru_profile.PNG';
+            characterImg.src = '/img/momose_profile.PNG';
             profile.appendChild(characterImg);
             messageElement.appendChild(profile);
         }
@@ -411,8 +534,8 @@ async function initializeApp() {
     // Detect language from HTML lang attribute
     const lang = document.documentElement.lang || 'ko';
     const greeting = lang === 'ko'
-        ? '안녕하세요, 저는 하루입니다. 지금의 감정 상태가 어떠신지 이야기해주세요.'
-        : "Hello, I'm Haru. Tell me how you're feeling right now.";
+        ? '안녕! 나는 히요리야 😊 지금의 감정 상태가 어떤지 이야기해줘~'
+        : "Hi! I'm Hiyori 😊 Tell me how you're feeling right now~";
     setTimeout(() => {
         chatManager.addMessage('ai', greeting);
     }, 700);
@@ -447,7 +570,7 @@ async function handleConnect() {
     connectionStatus.className = 'connection-status connecting';
 
     try {
-        realtimeClient = new RealtimeClient('haru');
+        realtimeClient = new RealtimeClient('hiyori');
 
         // Set up callbacks
         realtimeClient.onConnectionChange = (status) => {
@@ -507,7 +630,7 @@ async function handleConnect() {
             // Update the shared viseme state (PIXI ticker will read this)
             currentVisemes = visemes;
             // Debug: log viseme values periodically
-            if (Math.random() < 0.05) {
+            if (Math.random() < 0.05) {  // Log ~5% of updates
                 console.log('[App] Viseme update:', visemes);
             }
         };

@@ -73,6 +73,13 @@
     margin: 0;
 }
 
+.card .persona-age {
+    color: #888;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+}
+
 .disabled {
     position: relative;
     pointer-events: none;
@@ -180,4 +187,40 @@
 
 .secondary-btn:hover {
     background-color: #e4e4e4;
+}
+
+/* Language Switcher */
+.lang-switcher {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 1000;
+}
+
+.lang-btn {
+    text-decoration: none;
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.lang-btn:hover {
+    color: #333;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.lang-btn.active {
+    color: #fff;
+    background-color: #333;
+}
+
+.lang-divider {
+    color: #ccc;
+    font-weight: 300;
 }

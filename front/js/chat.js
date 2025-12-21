@@ -257,15 +257,6 @@ class ChatManager {
         if (role === 'ai') {
             const safeHTML = _sanitizeHtml(message);
             content.innerHTML = safeHTML;
-            // 프로액티브 카드가 있으면 HTML로 덧붙이기
-            if (aiPayload?.proactive_card) {
-                const cardHTML = _renderSuggestion(aiPayload.proactive_card);
-                if (cardHTML) content.insertAdjacentHTML('beforeend', cardHTML);
-            } else if (aiPayload?.proactive?.card) {
-                // 호환: 다른 키로 내려오는 경우
-                const cardHTML = _renderSuggestion(aiPayload.proactive.card);
-                if (cardHTML) content.insertAdjacentHTML('beforeend', cardHTML);
-            }
         } else {
             content.textContent = message;
         }
@@ -507,31 +498,6 @@ async function sendAudioToServerStream(audioBlob, characterType = 'kei') {
   return finalPayload;
 }
 
-// [ADD] 안전한 HTML 이스케이프
-function _esc(s){return (s||"").replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
-
-// [ADD] 제안 카드 HTML (수용/거절 버튼 포함)
-function _renderSuggestion(card){
-  if(!card) return "";
-  const alt = (card.alt||[]).map(x=>`<a href="${x.url}" target="_blank" rel="noopener">${_esc(x.title)}</a>`).join(" · ");
-  const type = _esc(card.type || 'info');
-  return `
-    <div class="suggestion-card">
-      <div class="suggestion-title">${_esc(card.title || "Suggestion")}</div>
-      ${card.reason ? `<div class="suggestion-meta">${_esc(card.reason)}</div>` : ""}
-
-      <div class="suggestion-actions">
-        ${card.url ? `<a href="${card.url}" target="_blank" rel="noopener"><span class="play"></span> 추천 음악 바로 듣기</a>` : ""}
-        ${alt ? ` · ${alt}` : ""}
-      </div>
-
-      <div class="suggestion-feedback">
-        <button class="s-accept" data-type="${type}">도움돼요</button>
-        <button class="s-reject" data-type="${type}">괜찮아요</button>
-      </div>
-    </div>`;
-}
-
 // [ADD] 허용 태그만 남기는 간단 Sanitizer: <a>, <br>만 허용
 function _sanitizeHtml(input) {
   const wrapper = document.createElement('div');
@@ -562,23 +528,3 @@ function _sanitizeHtml(input) {
   }
   return wrapper.innerHTML.replace(/\n/g, '<br>');
 }
-
-// [ADD] 프로액티브 카드 피드백 전송 (이벤트 위임)
-document.addEventListener('click', async (e)=>{
-  const btn = e.target.closest('.suggestion-feedback button');
-  if(!btn) return;
-  const accepted = btn.classList.contains('s-accept');
-  const sType = btn.getAttribute('data-type') || 'info';
-
-  try{
-    await fetch('/proactive/feedback', {
-      method:'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        session_id: 'default-session',   // 세션 ID를 별도로 관리한다면 교체
-        suggestion_type: sType,
-        accepted
-      })
-    });
-  }catch(err){ console.warn('feedback send fail', err); }
-});

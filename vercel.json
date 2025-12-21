@@ -23,6 +23,10 @@
   ],
   "routes": [
     {
+      "src": "/api/realtime/session",
+      "dest": "scripts/app.py"
+    },
+    {
       "src": "/scripts/(.*)",
       "dest": "scripts/app.py"
     },
@@ -37,6 +41,10 @@
     {
       "src": "/js/(.*)",
       "dest": "/front/js/$1"
+    },
+    {
+      "src": "/img/(.*)",
+      "dest": "/front/img/$1"
     },
     {
       "handle": "filesystem"

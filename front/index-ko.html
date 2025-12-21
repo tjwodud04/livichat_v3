@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 캐릭터와 대화하기</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="lang-switcher">
+        <a href="index.html" class="lang-btn">ENG</a>
+        <span class="lang-divider">|</span>
+        <a href="index-ko.html" class="lang-btn active">KOR</a>
+    </div>
+
+    <div class="main-container">
+        <h1 class="title">AI와 대화하기</h1>
+        <p class="subtitle">대화하고 싶은 캐릭터를 선택해주세요</p>
+        <div class="card-container">
+            <a href="hiyori-ko.html" class="card">
+                <div class="card-profile">
+                    <img src="/img/momose_profile.PNG" alt="히요리 프로필">
+                </div>
+                <div class="card-content">
+                    <h2>모모세 히요리</h2>
+                    <p class="persona-age">학생</p>
+                    <p>밝고 활발한 성격으로 친근하게 대화해요</p>
+                </div>
+            </a>
+            <a href="haru-ko.html" class="card">
+                <div class="card-profile">
+                    <img src="/img/haru_profile.PNG" alt="하루 프로필">
+                </div>
+                <div class="card-content">
+                    <h2>하루</h2>
+                    <p class="persona-age">안내 직원</p>
+                    <p>전문적이고 자신감 있게 조언해드려요</p>
+                </div>
+            </a>
+        </div>
+        <div class="api-key-section" style="display: flex; justify-content: flex-end; margin-top: 16px;">
+            <button id="setApiKeyBtn" class="api-key-btn">OpenAI API 키 변경</button>
+        </div>
+    </div>
+
+    <!-- API 키 입력 모달 -->
+    <div id="apiKeyModal" class="modal">
+        <div class="modal-content">
+            <h2>OpenAI API 키 설정</h2>
+            <p>대화를 시작하기 위해 OpenAI API 키를 입력해주세요</p>
+            <input type="password" id="apiKeyInput" placeholder="sk-..." class="api-key-input">
+            <div class="modal-buttons">
+                <button id="saveApiKey" class="primary-btn">저장</button>
+                <button id="closeModal" class="secondary-btn">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/main.js"></script>
+</body>
+</html>

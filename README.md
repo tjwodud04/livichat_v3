@@ -1,76 +1,93 @@
-## Live2D Character Chat
+# LiviChat
 
-This project demonstrates a character chat application using OpenAI's voice recognition and generation capabilities integrated with Live2D avatars. Users can engage in voice-based conversations with characters, with responses tailored to the user's emotions.
+Real-time voice chat with AI-powered Live2D characters using OpenAI Realtime API.
 
-### Video
-<video src="prototype_video/Prototype_Video.mp4" controls width="300">
-  <track kind="subtitles" src="prototype_video/Prototype_Video.srt" srclang="en" label="English">
-</video>
+> **[Live Demo](https://livichat.vercel.app)** | OpenAI API Key required
 
-[Watch Prototype Video](prototype_video/Prototype_Video.mp4)
+## Features
 
-### Installation and Setup
+- Real-time voice conversation with WebRTC
+- Live2D animated character responses
+- Emotion-aware AI personas (Hiyori, Haru)
+- Multi-language support (EN/KO)
 
-1. Clone the repository:
+## Quick Start
 
-   ```bash
-   git clone <repository-url>
-   cd <folder>
-   ```
+```bash
+# Clone & Install
+git clone https://github.com/tjwodud04/livichat_v3.git
+cd livichat_v3
+pip install -r requirements.txt
 
-2. Create a Python virtual environment and install dependencies:
+# Run locally
+python scripts/app.py
+# Open http://localhost:8001
+```
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # (Windows: venv\Scripts\activate)
-   pip install -r requirements.txt
-   ```
+## Deploy to Vercel
 
-3. (For local execution) Run the server:
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/tjwodud04/livichat_v3)
 
-   ```bash
-   python scripts/app.py
-   ```
+## Tech Stack
 
-   - Default port: 8001
-
-4. Access the application at `http://localhost:8001` in your browser.
-
-
-## Usage
-
-1. Select a character (Kei, Haru) from the main page.
-2. Enter your OpenAI API key (first time only, stored locally in the browser).
-3. Allow microphone access.
-4. Click the "Talk" button to speak, and click again to stop recording.
-5. The character will respond with voice and text.
+| Backend | Frontend | AI |
+|---------|----------|-----|
+| Flask | Vanilla JS | OpenAI Realtime API |
+| Python 3.11 | Live2D Cubism 4 | GPT-4o + Whisper |
 
 ## Project Structure
 
 ```
-.
-├── front/
-│   ├── index.html, kei.html, haru.html
-│   ├── js/
-│   │   ├── chat.js (for Kei)
-│   │   ├── haru.js (for Haru)
-│   │   └── main.js (main/API key input)
-│   └── css/
-├── model/
-│   ├── kei/ (Live2D model, sounds, etc.)
-│   └── haru/ (Live2D model, motions, etc.)
-├── scripts/
-│   ├── app.py (Flask backend entry point)
-│   ├── routes.py (Flask routes)
-│   ├── services.py (OpenAI and Vercel integration)
-│   ├── utils.py (Utility functions)
-│   └── config.py (Configuration and constants)
-├── requirements.txt
-├── vercel.json
+├── front/          # Static web pages
+├── scripts/        # Flask backend
+├── model/          # Live2D character models
+├── vercel.json     # Vercel config
+└── requirements.txt
 ```
 
-## Limitations and Considerations
+## License
 
-- **OpenAI API Key Required**: An API key is mandatory to use the service (no free provision).
-- **Vercel Free Plan**: Deployment may be slow due to large audio/model files.
-- **Demo/Research Purpose**: The code is intended for demonstration and research purposes, not for large-scale deployment.
+MIT
+
+---
+
+# LiviChat (한국어)
+
+OpenAI Realtime API를 활용한 Live2D 캐릭터와의 실시간 음성 대화 서비스입니다.
+
+> **[라이브 데모](https://livichat.vercel.app)** | OpenAI API 키 필요
+
+## 주요 기능
+
+- WebRTC 기반 실시간 음성 대화
+- Live2D 캐릭터 애니메이션 응답
+- 감정 인식 AI 페르소나 (히요리, 하루)
+- 다국어 지원 (영어/한국어)
+
+## 빠른 시작
+
+```bash
+# 복제 & 설치
+git clone https://github.com/tjwodud04/livichat_v3.git
+cd livichat_v3
+pip install -r requirements.txt
+
+# 로컬 실행
+python scripts/app.py
+# http://localhost:8001 접속
+```
+
+## Vercel 배포
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/tjwodud04/livichat_v3)
+
+## 기술 스택
+
+| 백엔드 | 프론트엔드 | AI |
+|--------|-----------|-----|
+| Flask | Vanilla JS | OpenAI Realtime API |
+| Python 3.11 | Live2D Cubism 4 | GPT-4o + Whisper |
+
+## 라이선스
+
+MIT

@@ -1,4 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // 현재 언어 감지 (영어 페이지인지 한국어 페이지인지)
+    const isKorean = window.location.pathname.includes('index-ko.html') ||
+                     document.documentElement.lang === 'ko';
+
+    // 언어별 텍스트
+    const texts = {
+        en: {
+            apiKeyChange: 'Change API Key',
+            modalTitle: 'OpenAI API Key Setup',
+            modalDesc: 'Please enter your OpenAI API key to start the conversation.',
+            modalTitleRequired: 'OpenAI API Key Required',
+            modalDescRequired: 'Please enter your OpenAI API key to use the service.',
+            invalidKey: 'Please enter a valid OpenAI API key.',
+            needApiKey: 'Please set up your OpenAI API key before starting a conversation.'
+        },
+        ko: {
+            apiKeyChange: 'API 키 변경',
+            modalTitle: 'OpenAI API 키 설정',
+            modalDesc: '대화를 시작하기 위해 OpenAI API 키를 입력해주세요.',
+            modalTitleRequired: 'OpenAI API Key가 필요합니다.',
+            modalDescRequired: '서비스 이용을 위해 OpenAI API Key를 입력해주세요.',
+            invalidKey: '올바른 OpenAI API 키를 입력해주세요.',
+            needApiKey: '대화를 시작하기 전에 OpenAI API 키를 설정해주세요.'
+        }
+    };
+
+    const t = isKorean ? texts.ko : texts.en;
+
     // 카드에 호버 효과 추가
     const cards = document.querySelectorAll('.card');
 
@@ -35,19 +63,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     let savedApiKey = getSavedApiKey();
     if (savedApiKey) {
-        setApiKeyBtn.textContent = 'API 키 변경';
+        setApiKeyBtn.textContent = t.apiKeyChange;
     }
 
     // 페이지 진입 시 API 키 없으면 모달 자동 오픈
     if (!savedApiKey) {
         modal.style.display = 'block';
-        // 안내문구 명확히
-        modal.querySelector('h2').textContent = 'OpenAI API Key가 필요합니다.';
-        modal.querySelector('p').textContent = '서비스 이용을 위해 OpenAI API Key를 입력해주세요.';
+        modal.querySelector('h2').textContent = t.modalTitleRequired;
+        modal.querySelector('p').textContent = t.modalDescRequired;
     } else {
-        // 안내문구 원래대로(버튼 클릭 시)
-        modal.querySelector('h2').textContent = 'OpenAI API 키 설정';
-        modal.querySelector('p').textContent = '대화를 시작하기 위해 OpenAI API 키를 입력해주세요.';
+        modal.querySelector('h2').textContent = t.modalTitle;
+        modal.querySelector('p').textContent = t.modalDesc;
     }
 
     // 모달 열기
@@ -59,9 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             apiKeyInput.value = '';
         }
-        // 안내문구 원래대로
-        modal.querySelector('h2').textContent = 'OpenAI API 키 설정';
-        modal.querySelector('p').textContent = '대화를 시작하기 위해 OpenAI API 키를 입력해주세요.';
+        modal.querySelector('h2').textContent = t.modalTitle;
+        modal.querySelector('p').textContent = t.modalDesc;
     });
 
     // 모달 닫기
@@ -74,10 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const apiKey = apiKeyInput.value.trim();
         if (apiKey && apiKey.startsWith('sk-')) {
             setSavedApiKey(apiKey);
-            setApiKeyBtn.textContent = 'API 키 변경';
+            setApiKeyBtn.textContent = t.apiKeyChange;
             modal.style.display = 'none';
         } else {
-            alert('올바른 OpenAI API 키를 입력해주세요.');
+            alert(t.invalidKey);
         }
     });
 
@@ -94,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', function(event) {
             if (!getSavedApiKey()) {
                 event.preventDefault();
-                alert('대화를 시작하기 전에 OpenAI API 키를 설정해주세요.');
+                alert(t.needApiKey);
                 modal.style.display = 'block';
             }
         });

@@ -169,3 +169,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Project specific
+livichat-next/
+prototype_video/
+*.zip
+nul
+.claude/
