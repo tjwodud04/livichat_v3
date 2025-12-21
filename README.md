@@ -1,8 +1,6 @@
-# LiviChat
+# LiviChat_v3
 
 Real-time voice chat with AI-powered Live2D characters using OpenAI Realtime API.
-
-> **[Live Demo](https://livichat.vercel.app)** | OpenAI API Key required
 
 ## Features
 
@@ -24,16 +22,11 @@ python scripts/app.py
 # Open http://localhost:8001
 ```
 
-## Deploy to Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/tjwodud04/livichat_v3)
-
 ## Tech Stack
 
 | Backend | Frontend | AI |
 |---------|----------|-----|
 | Flask | Vanilla JS | OpenAI Realtime API |
-| Python 3.11 | Live2D Cubism 4 | GPT-4o + Whisper |
 
 ## Project Structure
 
@@ -45,17 +38,11 @@ python scripts/app.py
 └── requirements.txt
 ```
 
-## License
-
-MIT
-
 ---
 
-# LiviChat (한국어)
+# LiviChat_v3 (한국어)
 
 OpenAI Realtime API를 활용한 Live2D 캐릭터와의 실시간 음성 대화 서비스입니다.
-
-> **[라이브 데모](https://livichat.vercel.app)** | OpenAI API 키 필요
 
 ## 주요 기능
 
@@ -77,17 +64,8 @@ python scripts/app.py
 # http://localhost:8001 접속
 ```
 
-## Vercel 배포
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/tjwodud04/livichat_v3)
-
 ## 기술 스택
 
 | 백엔드 | 프론트엔드 | AI |
 |--------|-----------|-----|
 | Flask | Vanilla JS | OpenAI Realtime API |
-| Python 3.11 | Live2D Cubism 4 | GPT-4o + Whisper |
-
-## 라이선스
-
-MIT
