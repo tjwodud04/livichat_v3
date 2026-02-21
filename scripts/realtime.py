@@ -27,10 +27,10 @@ def create_realtime_session():
         instructions = CHARACTER_SYSTEM_PROMPTS[character]
         voice = CHARACTER_VOICE.get(character, 'alloy')
 
-        # Get API key from request header (user-provided) or environment
-        api_key = request.headers.get('X-API-KEY') or os.getenv('OPENAI_API_KEY')
+        # Get API key from request header (validated upstream in routes.py)
+        api_key = request.headers.get('X-API-KEY', '').strip()
         if not api_key:
-            return jsonify({'error': 'OpenAI API key not configured. Please set your API key in the settings.'}), 400
+            return jsonify({'error': 'OpenAI API key not configured. Please set your API key in the settings.'}), 401
 
         # Create ephemeral token via OpenAI Realtime Sessions API
         response = requests.post(
