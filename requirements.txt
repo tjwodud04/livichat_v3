@@ -32,7 +32,7 @@ pyee==13.0.0
 python-dotenv==1.1.0
 python-ffmpeg==2.0.12
 python-multipart==0.0.22
-requests==2.32.3
+requests==2.32.4
 sniffio==1.3.1
 sse-starlette==2.3.6
 starlette==0.49.1
