@@ -21,7 +21,6 @@ itsdangerous==2.2.0
 Jinja2==3.1.6
 jiter==0.10.0
 MarkupSafe==3.0.2
-mcp==1.9.3
 numpy==2.2.6
 openai==1.84.0
 openai-agents==0.0.17
@@ -32,7 +31,7 @@ pydub==0.25.1
 pyee==13.0.0
 python-dotenv==1.1.0
 python-ffmpeg==2.0.12
-python-multipart==0.0.20
+python-multipart==0.0.22
 requests==2.32.3
 sniffio==1.3.1
 sse-starlette==2.3.6
@@ -41,7 +40,7 @@ tqdm==4.67.1
 types-requests==2.32.0.20250602
 typing-inspection==0.4.1
 typing_extensions==4.14.0
-urllib3==2.4.0
+urllib3==2.6.3
 uvicorn==0.34.3
 websockets==15.0.1
 Werkzeug==3.1.3
