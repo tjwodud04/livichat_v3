@@ -29,7 +29,7 @@ pydantic-settings==2.9.1
 pydantic_core==2.33.2
 pydub==0.25.1
 pyee==13.0.0
-python-dotenv==1.1.0
+python-dotenv==1.2.2
 python-ffmpeg==2.0.12
 python-multipart==0.0.26
 requests==2.33.0
