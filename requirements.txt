@@ -40,7 +40,7 @@ tqdm==4.67.1
 types-requests==2.32.0.20250602
 typing-inspection==0.4.1
 typing_extensions==4.14.0
-urllib3==2.6.3
+urllib3==2.7.0
 uvicorn==0.34.3
 websockets==15.0.1
 Werkzeug==3.1.6
