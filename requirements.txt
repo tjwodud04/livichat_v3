@@ -35,7 +35,7 @@ python-multipart==0.0.27
 requests==2.33.0
 sniffio==1.3.1
 sse-starlette==2.3.6
-starlette==0.49.1
+starlette==1.0.1
 tqdm==4.67.1
 types-requests==2.32.0.20250602
 typing-inspection==0.4.1
