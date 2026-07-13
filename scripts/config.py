@@ -1,7 +1,54 @@
 import os
 
+# ---------------------------------------------------------------------------
+# Secrets (never hardcode; supplied via environment / .env)
+# ---------------------------------------------------------------------------
 VERCEL_TOKEN = os.getenv("VERCEL_TOKEN")
 VERCEL_PROJ_ID = os.getenv("VERCEL_PROJECT_ID")
+
+# ---------------------------------------------------------------------------
+# OpenAI Realtime API (GA) configuration
+#
+# The beta endpoints (POST /v1/realtime/sessions, model
+# gpt-4o-realtime-preview-*) were retired on 2026-05-07. These constants target
+# the GA protocol: the backend mints an ephemeral client secret at
+# /v1/realtime/client_secrets and the browser completes the WebRTC handshake
+# against /v1/realtime/calls.
+# Docs: https://developers.openai.com/api/docs/guides/realtime-webrtc
+# ---------------------------------------------------------------------------
+OPENAI_REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets"
+
+# GA realtime model alias (tracks the current gpt-realtime snapshot).
+REALTIME_MODEL = "gpt-realtime"
+
+# Session/audio parameters sent when minting an ephemeral client secret.
+REALTIME_SESSION_TYPE = "realtime"            # speech-to-speech session
+REALTIME_OUTPUT_MODALITIES = ["audio"]        # audio reply (transcript included)
+REALTIME_AUDIO_FORMAT = "pcm16"               # 24 kHz PCM, both directions
+REALTIME_TRANSCRIPTION_MODEL = "whisper-1"    # user speech-to-text
+
+# Server-side voice activity detection (natural turn taking / barge-in).
+REALTIME_VAD_TYPE = "server_vad"
+REALTIME_VAD_THRESHOLD = 0.5
+REALTIME_VAD_PREFIX_PADDING_MS = 300
+REALTIME_VAD_SILENCE_DURATION_MS = 800
+
+# Network timeout (seconds) for the client-secret request to OpenAI.
+REALTIME_REQUEST_TIMEOUT = 30
+
+# Fallbacks used when a request omits or does not match a known character.
+DEFAULT_CHARACTER = "hiyori"
+DEFAULT_VOICE = "alloy"
+
+# ---------------------------------------------------------------------------
+# Flask application configuration
+# ---------------------------------------------------------------------------
+# Rate limit for the ephemeral-token endpoint (Flask-Limiter syntax).
+SESSION_RATE_LIMIT = "10 per minute"
+
+# Local development server (used only by ``python scripts/app.py``).
+SERVER_HOST = "127.0.0.1"
+SERVER_PORT = 5000
 
 # 캐릭터별 시스템 프롬프트
 CHARACTER_SYSTEM_PROMPTS = {
